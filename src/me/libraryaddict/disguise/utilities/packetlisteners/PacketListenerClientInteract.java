@@ -22,6 +22,7 @@ import me.libraryaddict.disguise.disguisetypes.Disguise;
 import me.libraryaddict.disguise.disguisetypes.DisguiseType;
 import me.libraryaddict.disguise.disguisetypes.watchers.SheepWatcher;
 import me.libraryaddict.disguise.disguisetypes.watchers.WolfWatcher;
+import me.libraryaddict.disguise.utilities.ReflectionManager;
 
 public class PacketListenerClientInteract extends PacketAdapter
 {
@@ -55,7 +56,8 @@ public class PacketListenerClientInteract extends PacketAdapter
 
             for (ItemStack item : new ItemStack[]
                 {
-                        observer.getInventory().getItemInMainHand(), observer.getInventory().getItemInOffHand()
+                        observer.getInventory().getItemInHand(),
+                        ReflectionManager.isPre1_9() ? null : observer.getInventory().getItemInOffHand()
                 })
             {
                 if (item == null || item.getType() != Material.INK_SACK)

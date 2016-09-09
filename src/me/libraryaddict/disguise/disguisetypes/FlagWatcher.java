@@ -305,10 +305,10 @@ public class FlagWatcher
     {
         if (_entityValues.containsKey(flagType.getIndex()))
         {
-            return (Y) _entityValues.get(flagType.getIndex());
+            return (Y) flagType.convertToReceive(_entityValues.get(flagType.getIndex()));
         }
 
-        return flagType.getDefault();
+        return flagType.convertToReceive(flagType.getDefault());
     }
 
     public List<WrappedWatchableObject> getWatchableObjects()
@@ -420,6 +420,9 @@ public class FlagWatcher
 
         for (FlagType data : dataValues)
         {
+            if (data.isUnsupported())
+                continue;
+
             if (!_entityValues.containsKey(data.getIndex()) || _entityValues.get(data.getIndex()) == null)
             {
                 continue;
@@ -677,7 +680,10 @@ public class FlagWatcher
 
     protected <Y> void setValue(FlagType<Y> id, Y value)
     {
-        _entityValues.put(id.getIndex(), value);
+        if (id.isUnsupported())
+            return;
+
+        _entityValues.put(id.getIndex(), id.convertToSend(value));
 
         if (!DisguiseConfig.isMetadataPacketsEnabled())
         {

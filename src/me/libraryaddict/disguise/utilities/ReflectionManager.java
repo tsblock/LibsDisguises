@@ -48,7 +48,10 @@ public class ReflectionManager
     private static final Method ihmGet;
     private static final Field pingField;
     private static final Field trackerField;
-    public static final Field entityCountField;
+    private static final Field entityCountField;
+    private static final boolean v1_10;
+    private static final boolean v1_9;
+    private static final boolean v1_8;
 
     static
     {
@@ -95,6 +98,52 @@ public class ReflectionManager
         entityCountField = getNmsField("Entity", "entityCount");
 
         entityCountField.setAccessible(true);
+
+        v1_10 = bukkitVersion.startsWith("v1_10_");
+        v1_9 = bukkitVersion.startsWith("v1_9_");
+        v1_8 = bukkitVersion.startsWith("v1_8_");
+    }
+
+    public static ItemStack getItemWithMaterial(String name)
+    {
+        try
+        {
+            Material mat = Material.valueOf(name);
+
+            if (mat == null)
+                return null;
+
+            return new ItemStack(mat);
+        }
+        catch (Exception ex)
+        {
+            return null;
+        }
+    }
+
+    public static boolean is1_10()
+    {
+        return v1_10;
+    }
+
+    public static boolean is1_9()
+    {
+        return v1_9;
+    }
+
+    public static boolean is1_8()
+    {
+        return v1_8;
+    }
+
+    public static boolean is1_7()
+    {
+        return false;
+    }
+    
+    public static boolean isPre1_9()
+    {
+        return is1_7() || is1_8();
     }
 
     public static Object createEntityInstance(String entityName)
@@ -128,7 +177,7 @@ public class ReflectionManager
                 entityObject = entityClass
                         .getDeclaredConstructor(getNmsClass("World"), Double.TYPE, Double.TYPE, Double.TYPE,
                                 getNmsClass("ItemStack"))
-                        .newInstance(world, 0d, 0d, 0d, getNmsItem(new ItemStack(Material.SPLASH_POTION)));
+                        .newInstance(world, 0d, 0d, 0d, getNmsItem(new ItemStack(Material.STONE)));
                 break;
             default:
                 entityObject = entityClass.getDeclaredConstructor(getNmsClass("World")).newInstance(world);
@@ -781,8 +830,11 @@ public class ReflectionManager
      * @param slot
      * @return null if the equipment slot is null
      */
-    public static Enum createEnumItemSlot(EquipmentSlot slot)
+    public static Object createEnumItemSlot(EquipmentSlot slot)
     {
+        if (is1_7() || is1_8())
+            return slot.ordinal();
+
         Class<?> clazz = getNmsClass("EnumItemSlot");
 
         Object[] enums = clazz != null ? clazz.getEnumConstants() : null;
@@ -964,14 +1016,15 @@ public class ReflectionManager
             {
                 ex.printStackTrace();
             }
-        } else if (value instanceof BlockPosition)
+        }
+        else if (value instanceof BlockPosition)
         {
             BlockPosition pos = (BlockPosition) value;
 
             try
             {
-                return getNmsConstructor("BlockPosition", int.class, int.class, int.class).newInstance(pos.getX(),
-                        pos.getY(), pos.getZ());
+                return getNmsConstructor("BlockPosition", int.class, int.class, int.class).newInstance(pos.getX(), pos.getY(),
+                        pos.getZ());
             }
             catch (Exception ex)
             {
@@ -1011,8 +1064,8 @@ public class ReflectionManager
 
         if (serializer == null)
         {
-            throw new IllegalArgumentException(
-                    "Unable to find Serializer for " + value + "! Are you running the latest version of ProtocolLib?");
+            throw new IllegalArgumentException("Unable to find Serializer for index " + id + " value " + value
+                    + "! Are you running the latest version of ProtocolLib?");
         }
 
         WrappedDataWatcherObject watcherObject = new WrappedDataWatcherObject(id, serializer);
@@ -1033,6 +1086,12 @@ public class ReflectionManager
 
     public static WrappedWatchableObject createWatchable(int index, Object obj)
     {
+        if (obj == null)
+            return null;
+
+        if (ReflectionManager.is1_7() || ReflectionManager.is1_8())
+            return new WrappedWatchableObject(index, convertInvalidItem(obj));
+
         return new WrappedWatchableObject(createDataWatcherItem(index, obj));
     }
 

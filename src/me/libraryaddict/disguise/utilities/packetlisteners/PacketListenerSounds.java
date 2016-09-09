@@ -64,11 +64,13 @@ public class PacketListenerSounds extends PacketAdapter
 
         if (event.getPacketType() == Server.NAMED_SOUND_EFFECT)
         {
+            boolean oldSounds = ReflectionManager.isPre1_9();
             SoundType soundType = null;
 
             int[] soundCords = new int[]
                 {
-                        (Integer) mods.read(2), (Integer) mods.read(3), (Integer) mods.read(4)
+                        (Integer) mods.read(oldSounds ? 1 : 2), (Integer) mods.read(oldSounds ? 2 : 3),
+                        (Integer) mods.read(oldSounds ? 3 : 4)
                 };
 
             int chunkX = (int) Math.floor((soundCords[0] / 8D) / 16D);
@@ -84,7 +86,7 @@ public class PacketListenerSounds extends PacketAdapter
 
             Disguise disguise = null;
 
-            String soundEffect = ReflectionManager.convertSoundEffectToString(mods.read(0));
+            String soundEffect = oldSounds ? (String) mods.read(0) : ReflectionManager.convertSoundEffectToString(mods.read(0));
             Entity[] entities = observer.getWorld().getChunkAt(chunkX, chunkZ).getEntities();
 
             for (Entity entity : entities)
@@ -205,8 +207,11 @@ public class PacketListenerSounds extends PacketAdapter
                             {
                                 Object step = ReflectionManager.getNmsField("Block", "stepSound").get(block);
 
-                                mods.write(0, ReflectionManager.getNmsMethod(step.getClass(), "d").invoke(step));
-                                mods.write(1, ReflectionManager.getSoundCategory(disguise.getType()));
+                                mods.write(0, ReflectionManager.getNmsMethod(step.getClass(), oldSounds ? "getStepSound" : "d")
+                                        .invoke(step));
+
+                                if (!oldSounds)
+                                    mods.write(1, ReflectionManager.getSoundCategory(disguise.getType()));
                             }
                         }
                         catch (Exception ex)
@@ -219,16 +224,18 @@ public class PacketListenerSounds extends PacketAdapter
                     }
                     else
                     {
-                        mods.write(0, ReflectionManager.getCraftSoundEffect(sound));
-                        mods.write(1, ReflectionManager.getSoundCategory(disguise.getType()));
+                        mods.write(0, oldSounds ? sound : ReflectionManager.getCraftSoundEffect(sound));
+
+                        if (!oldSounds)
+                            mods.write(1, ReflectionManager.getSoundCategory(disguise.getType()));
 
                         // Time to change the pitch and volume
                         if (soundType == SoundType.HURT || soundType == SoundType.DEATH || soundType == SoundType.IDLE)
                         {
                             // If the volume is the default
-                            if (mods.read(5).equals(entitySound.getDamageAndIdleSoundVolume()))
+                            if (mods.read(oldSounds ? 4 : 5).equals(entitySound.getDamageAndIdleSoundVolume()))
                             {
-                                mods.write(5, dSound.getDamageAndIdleSoundVolume());
+                                mods.write(oldSounds ? 4 : 5, dSound.getDamageAndIdleSoundVolume());
                             }
 
                             // Here I assume its the default pitch as I can't calculate if its real.
@@ -248,7 +255,7 @@ public class PacketListenerSounds extends PacketAdapter
 
                                 if (((MobDisguise) disguise).isAdult() == baby)
                                 {
-                                    float pitch = (Float) mods.read(6);
+                                    float pitch = oldSounds ? ((Byte) mods.read(5)) / 64F : (Float) mods.read(6);
 
                                     if (baby)
                                     {
@@ -285,7 +292,10 @@ public class PacketListenerSounds extends PacketAdapter
                                     if (pitch > 255)
                                         pitch = 255;
 
-                                    mods.write(6, pitch);
+                                    if (oldSounds)
+                                        mods.write(5, (int) pitch);
+                                    else
+                                        mods.write(6, pitch);
                                 }
                             }
                         }
@@ -315,6 +325,7 @@ public class PacketListenerSounds extends PacketAdapter
 
                 SoundType soundType = null;
                 Object obj = null;
+                boolean oldSounds = ReflectionManager.isPre1_9();
 
                 if (entity instanceof LivingEntity)
                 {
@@ -367,14 +378,19 @@ public class PacketListenerSounds extends PacketAdapter
 
                             mods = packet.getModifier();
 
-                            Object craftSoundEffect = ReflectionManager.getCraftSoundEffect(sound);
+                            Object craftSoundEffect = oldSounds ? sound : ReflectionManager.getCraftSoundEffect(sound);
 
-                            mods.write(0, craftSoundEffect);
-                            mods.write(1, ReflectionManager.getSoundCategory(disguise.getType())); // Meh
-                            mods.write(2, (int) (loc.getX() * 8D));
-                            mods.write(3, (int) (loc.getY() * 8D));
-                            mods.write(4, (int) (loc.getZ() * 8D));
-                            mods.write(5, disSound.getDamageAndIdleSoundVolume());
+                            int index = 0;
+
+                            mods.write(index++, craftSoundEffect);
+
+                            if (!oldSounds)
+                                mods.write(index++, ReflectionManager.getSoundCategory(disguise.getType())); // Meh
+
+                            mods.write(index++, (int) (loc.getX() * 8D));
+                            mods.write(index++, (int) (loc.getY() * 8D));
+                            mods.write(index++, (int) (loc.getZ() * 8D));
+                            mods.write(index++, disSound.getDamageAndIdleSoundVolume());
 
                             float pitch;
 
@@ -398,7 +414,7 @@ public class PacketListenerSounds extends PacketAdapter
                             if (pitch > 255)
                                 pitch = 255;
 
-                            mods.write(6, (int) pitch);
+                            mods.write(index++, (int) pitch);
 
                             try
                             {

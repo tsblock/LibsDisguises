@@ -63,6 +63,8 @@ public class EndermanWatcher extends InsentientWatcher
             optional = Optional.<WrappedBlockData> of(WrappedBlockData.createData(type, data));
 
         setValue(FlagType.ENDERMAN_ITEM, optional);
+        setValue(FlagType.ENDERMAN_OLD_ITEM_TYPE, (short) (type.getId() & 255));
+        setValue(FlagType.ENDERMAN_OLD_ITEM_DATA, (byte) (data & 255));
     }
 
     @Deprecated

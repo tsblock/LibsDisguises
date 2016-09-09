@@ -84,6 +84,7 @@ public class DisguiseUtilities
     private static HashSet<UUID> selfDisguised = new HashSet<>();
     private static Thread mainThread;
     private static PacketContainer spawnChunk;
+    private static Object mapChunk;
 
     static
     {
@@ -92,10 +93,10 @@ public class DisguiseUtilities
             Object server = ReflectionManager.getNmsMethod("MinecraftServer", "getServer").invoke(null);
             Object world = ((List) server.getClass().getField("worlds").get(server)).get(0);
 
-            Object bedChunk = ReflectionManager.getNmsClass("Chunk")
+            mapChunk = ReflectionManager.getNmsClass("Chunk")
                     .getConstructor(ReflectionManager.getNmsClass("World"), int.class, int.class).newInstance(world, 0, 0);
 
-            Field cSection = bedChunk.getClass().getDeclaredField("sections");
+            Field cSection = mapChunk.getClass().getDeclaredField("sections");
             cSection.setAccessible(true);
 
             Object chunkSection = ReflectionManager.getNmsClass("ChunkSection").getConstructor(int.class, boolean.class)
@@ -130,10 +131,19 @@ public class DisguiseUtilities
 
             array[0] = chunkSection;
 
-            cSection.set(bedChunk, array);
+            cSection.set(mapChunk, array);
 
-            spawnChunk = ProtocolLibrary.getProtocolManager()
-                    .createPacketConstructor(PacketType.Play.Server.MAP_CHUNK, bedChunk, 65535).createPacket(bedChunk, 65535);
+            if (ReflectionManager.is1_10() || ReflectionManager.is1_9())
+            {
+                spawnChunk = ProtocolLibrary.getProtocolManager()
+                        .createPacketConstructor(PacketType.Play.Server.MAP_CHUNK, mapChunk, 65535).createPacket(mapChunk, 65535);
+            }
+            else if (ReflectionManager.is1_8())
+            {
+                spawnChunk = ProtocolLibrary.getProtocolManager()
+                        .createPacketConstructor(PacketType.Play.Server.MAP_CHUNK, mapChunk, true, 65535)
+                        .createPacket(mapChunk, true, 65535);
+            }
 
             Field threadField = ReflectionManager.getNmsField("MinecraftServer", "primaryThread");
             threadField.setAccessible(true);
@@ -444,12 +454,23 @@ public class DisguiseUtilities
 
         if (oldLoc != null)
         {
-            PacketContainer despawn = new PacketContainer(Server.UNLOAD_CHUNK);
+            PacketContainer despawn;
 
-            StructureModifier<Object> modifier = despawn.getModifier();
+            if (ReflectionManager.is1_10() || ReflectionManager.is1_9())
+            {
+                despawn = new PacketContainer(Server.UNLOAD_CHUNK);
 
-            modifier.write(0, getChunkCord(oldLoc.getBlockX()));
-            modifier.write(1, getChunkCord(oldLoc.getBlockZ()));
+                StructureModifier<Object> modifier = despawn.getModifier();
+
+                modifier.write(0, getChunkCord(oldLoc.getBlockX()));
+                modifier.write(1, getChunkCord(oldLoc.getBlockZ()));
+            }
+            else
+            {
+                despawn = ProtocolLibrary.getProtocolManager()
+                        .createPacketConstructor(PacketType.Play.Server.MAP_CHUNK, mapChunk, true, 0)
+                        .createPacket(mapChunk, true, 0);
+            }
 
             packets[i++] = despawn;
         }
@@ -1370,13 +1391,15 @@ public class DisguiseUtilities
                             ReflectionManager.createEnumItemSlot(EquipmentSlot.HEAD),
                             ReflectionManager.getNmsItem(new ItemStack(Material.STONE))).createPacket(player.getEntityId(),
                                     ReflectionManager.createEnumItemSlot(EquipmentSlot.HAND),
-                                    ReflectionManager.getNmsItem(player.getInventory().getItemInMainHand())));
-            sendSelfPacket(player,
-                    manager.createPacketConstructor(Server.ENTITY_EQUIPMENT, 0,
-                            ReflectionManager.createEnumItemSlot(EquipmentSlot.HEAD),
-                            ReflectionManager.getNmsItem(new ItemStack(Material.STONE))).createPacket(player.getEntityId(),
-                                    ReflectionManager.createEnumItemSlot(EquipmentSlot.OFF_HAND),
-                                    ReflectionManager.getNmsItem(player.getInventory().getItemInOffHand())));
+                                    ReflectionManager.getNmsItem(player.getInventory().getItemInHand())));
+
+            if (!ReflectionManager.isPre1_9())
+                sendSelfPacket(player,
+                        manager.createPacketConstructor(Server.ENTITY_EQUIPMENT, 0,
+                                ReflectionManager.createEnumItemSlot(EquipmentSlot.HEAD),
+                                ReflectionManager.getNmsItem(new ItemStack(Material.STONE))).createPacket(player.getEntityId(),
+                                        ReflectionManager.createEnumItemSlot(EquipmentSlot.OFF_HAND),
+                                        ReflectionManager.getNmsItem(player.getInventory().getItemInOffHand())));
 
             Location loc = player.getLocation();
 

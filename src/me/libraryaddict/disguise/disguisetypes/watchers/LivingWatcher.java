@@ -34,16 +34,52 @@ public class LivingWatcher extends FlagWatcher
     {
         try
         {
-            getId = ReflectionManager.getNmsMethod("MobEffectList", "getId", ReflectionManager.getNmsClass("MobEffectList"));
-            Object REGISTRY = ReflectionManager.getNmsField("MobEffectList", "REGISTRY").get(null);
-
-            for (Object next : ((Iterable) REGISTRY))
+            if (ReflectionManager.is1_10() || ReflectionManager.is1_9())
             {
-                int id = (int) getId.invoke(null, next);
-                list.put(id, next);
+                getId = ReflectionManager.getNmsMethod("MobEffectList", "getId", ReflectionManager.getNmsClass("MobEffectList"));
+
+                Object REGISTRY = ReflectionManager.getNmsField("MobEffectList", "REGISTRY").get(null);
+
+                for (Object next : ((Iterable) REGISTRY))
+                {
+                    int id = (int) getId.invoke(null, next);
+                    list.put(id, next);
+                }
+            }
+            else if (ReflectionManager.is1_8())
+            {
+                Object[] potions = (Object[]) ReflectionManager.getNmsField("MobEffectList", "byId").get(null);
+
+                for (Object obj : potions)
+                {
+                    if (obj == null)
+                        continue;
+
+                    for (Method field : obj.getClass().getMethods())
+                    {
+                        if (field.getReturnType() != int.class)
+                        {
+                            continue;
+                        }
+
+                        if ((Integer) field.invoke(obj) <= 10000)
+                        {
+                            continue;
+                        }
+
+                        if (field.getParameterTypes().length > 0)
+                            continue;
+
+                        list.put((int) field.invoke(obj), obj);
+                        break;
+                    }
+                }
             }
         }
-        catch (Exception ex)
+        catch (
+
+        Exception ex)
+
         {
             ex.printStackTrace();
         }

@@ -809,7 +809,7 @@ public abstract class Disguise
                     backup = flagType;
             }
 
-            getWatcher().setBackupValue(flag, backup == null ? null : backup.getDefault());
+            getWatcher().setBackupValue(flag, backup == null ? null : backup.convertToSend(backup.getDefault()));
         }
 
         getWatcher().setNoGravity(true);

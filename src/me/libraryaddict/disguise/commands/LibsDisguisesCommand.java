@@ -16,10 +16,15 @@ public class LibsDisguisesCommand implements CommandExecutor
     {
         if (args.length == 0)
         {
-            sender.sendMessage(ChatColor.DARK_GREEN + "This server is running " + "Lib's Disguises v."
+            sender.sendMessage(ChatColor.DARK_GREEN + "This server is running special edition " + "Lib's Disguises v."
                     + Bukkit.getPluginManager().getPlugin("LibsDisguises").getDescription().getVersion()
-                    + " by libraryaddict, maintained by NavidK0.\n"
-                    + "Use /libsdisguises reload to reload the config. All disguises will be blown by doing this.");
+                    + " by libraryaddict, maintained by NavidK0, purchased by %%__USER__%%.");
+
+            if (sender.hasPermission("libsdisguises.reload"))
+            {
+                sender.sendMessage(ChatColor.DARK_GREEN
+                        + "Use /libsdisguises reload to reload the config. All disguises will be blown by doing this.");
+            }
         }
         else if (args.length > 0)
         {

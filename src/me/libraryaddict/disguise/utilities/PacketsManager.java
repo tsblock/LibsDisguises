@@ -185,9 +185,9 @@ public class PacketsManager
             StructureModifier<Object> mods = spawnPackets[0].getModifier();
 
             mods.write(0, disguisedEntity.getEntityId());
-            mods.write(1, loc.getX());
-            mods.write(2, loc.getY() + 0.06);
-            mods.write(3, loc.getZ());
+            mods.write(1, getLoc(loc.getX()));
+            mods.write(2, getLoc(loc.getY() + 0.06));
+            mods.write(3, getLoc(loc.getZ()));
             mods.write(4, 1);
         }
         else if (disguise.getType() == DisguiseType.PAINTING)
@@ -196,14 +196,21 @@ public class PacketsManager
 
             StructureModifier<Object> mods = spawnPackets[0].getModifier();
 
-            mods.write(0, disguisedEntity.getEntityId());
-            mods.write(1, disguisedEntity.getUniqueId());
-            mods.write(2, ReflectionManager.getBlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
-            mods.write(3, ReflectionManager.getEnumDirection(((int) loc.getYaw()) % 4));
+            int index = 0;
+
+            mods.write(index++, disguisedEntity.getEntityId());
+
+            if (!ReflectionManager.is1_7() && !ReflectionManager.is1_8())
+            {
+                mods.write(index++, disguisedEntity.getUniqueId());
+            }
+
+            mods.write(index++, ReflectionManager.getBlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
+            mods.write(index++, ReflectionManager.getEnumDirection(((int) loc.getYaw()) % 4));
 
             int id = ((MiscDisguise) disguise).getData();
 
-            mods.write(4, ReflectionManager.getEnumArt(Art.values()[id]));
+            mods.write(index++, ReflectionManager.getEnumArt(Art.values()[id]));
 
             // Make the teleport packet to make it visible..
             spawnPackets[1] = new PacketContainer(Server.ENTITY_TELEPORT);
@@ -211,9 +218,9 @@ public class PacketsManager
             mods = spawnPackets[1].getModifier();
 
             mods.write(0, disguisedEntity.getEntityId());
-            mods.write(1, loc.getX());
-            mods.write(2, loc.getY());
-            mods.write(3, loc.getZ());
+            mods.write(1, getLoc(loc.getX()));
+            mods.write(2, getLoc(loc.getY()));
+            mods.write(3, getLoc(loc.getZ()));
             mods.write(4, yaw);
             mods.write(5, pitch);
         }
@@ -239,15 +246,17 @@ public class PacketsManager
 
             spawnPackets[0] = new PacketContainer(PacketType.Play.Server.NAMED_ENTITY_SPAWN);
 
-            spawnPackets[0].getIntegers().write(0, entityId); // Id
-            spawnPackets[0].getModifier().write(1, gameProfile.getUUID());
+            StructureModifier<Object> mods = spawnPackets[0].getModifier();
 
-            spawnPackets[0].getDoubles().write(0, loc.getX());
-            spawnPackets[0].getDoubles().write(1, loc.getY());
-            spawnPackets[0].getDoubles().write(2, loc.getZ());
+            mods.write(0, entityId); // Id
+            mods.write(1, gameProfile.getUUID());
 
-            spawnPackets[0].getBytes().write(0, ((byte) (int) (loc.getYaw() * 256.0F / 360.0F)));
-            spawnPackets[0].getBytes().write(1, ((byte) (int) (loc.getPitch() * 256.0F / 360.0F)));
+            mods.write(2, getLoc(loc.getX()));
+            mods.write(3, getLoc(loc.getY()));
+            mods.write(4, getLoc(loc.getZ()));
+
+            mods.write(5, ((byte) (int) (loc.getYaw() * 256.0F / 360.0F)));
+            mods.write(6, ((byte) (int) (loc.getPitch() * 256.0F / 360.0F)));
 
             spawnPackets[0].getDataWatcherModifier().write(0,
                     createDataWatcher(WrappedDataWatcher.getEntityWatcher(disguisedEntity), disguise.getWatcher())); // watcher,
@@ -310,9 +319,16 @@ public class PacketsManager
 
             StructureModifier<Object> mods = spawnPackets[0].getModifier();
 
-            mods.write(0, disguisedEntity.getEntityId());
-            mods.write(1, UUID.randomUUID());
-            mods.write(2, disguise.getType().getTypeId());
+            int index = 0;
+
+            mods.write(index++, disguisedEntity.getEntityId());
+
+            if (!ReflectionManager.is1_7() && !ReflectionManager.is1_8())
+            {
+                mods.write(index++, UUID.randomUUID());
+            }
+
+            mods.write(index++, disguise.getType().getTypeId());
 
             // region Vector calculations
             double d1 = 3.9D;
@@ -333,14 +349,14 @@ public class PacketsManager
                 d4 = d1;
             // endregion
 
-            mods.write(3, loc.getX());
-            mods.write(4, loc.getY());
-            mods.write(5, loc.getZ());
-            mods.write(6, (int) (d2 * 8000.0D));
-            mods.write(7, (int) (d3 * 8000.0D));
-            mods.write(8, (int) (d4 * 8000.0D));
-            mods.write(9, yaw);
-            mods.write(10, pitch);
+            mods.write(index++, getLoc(loc.getX()));
+            mods.write(index++, getLoc(loc.getY()));
+            mods.write(index++, getLoc(loc.getZ()));
+            mods.write(index++, (int) (d2 * 8000.0D));
+            mods.write(index++, (int) (d3 * 8000.0D));
+            mods.write(index++, (int) (d4 * 8000.0D));
+            mods.write(index++, yaw);
+            mods.write(index++, pitch);
 
             spawnPackets[0].getDataWatcherModifier().write(0,
                     createDataWatcher(WrappedDataWatcher.getEntityWatcher(disguisedEntity), disguise.getWatcher()));
@@ -369,18 +385,19 @@ public class PacketsManager
             spawnPackets[0] = ProtocolLibrary.getProtocolManager()
                     .createPacketConstructor(PacketType.Play.Server.SPAWN_ENTITY, nmsEntity, objectId, data)
                     .createPacket(nmsEntity, objectId, data);
-            spawnPackets[0].getModifier().write(8, pitch);
-            spawnPackets[0].getModifier().write(9, yaw);
+
+            spawnPackets[0].getModifier().write(ReflectionManager.isPre1_9() ? 7 : 8, pitch);
+            spawnPackets[0].getModifier().write(ReflectionManager.isPre1_9() ? 8 : 9, yaw);
 
             if (disguise.getType() == DisguiseType.ITEM_FRAME)
             {
                 if (data % 2 == 0)
                 {
-                    spawnPackets[0].getModifier().write(4, loc.getZ() + (data == 0 ? -1 : 1));
+                    spawnPackets[0].getModifier().write(4, getLoc(loc.getZ() + (data == 0 ? -1 : 1)));
                 }
                 else
                 {
-                    spawnPackets[0].getModifier().write(2, loc.getX() + (data == 3 ? -1 : 1));
+                    spawnPackets[0].getModifier().write(2, getLoc(loc.getX() + (data == 3 ? -1 : 1)));
                 }
             }
         }
@@ -408,6 +425,14 @@ public class PacketsManager
             };
     }
 
+    private static Object getLoc(double loc)
+    {
+        if (ReflectionManager.is1_7() || ReflectionManager.is1_8())
+            return (int) Math.floor(loc * 32);
+
+        return loc;
+    }
+
     /**
      * Create a new datawatcher but with the 'correct' values
      */
@@ -427,6 +452,12 @@ public class PacketsManager
 
                 if (watchableObject.getValue() == null)
                     continue;
+
+                if (ReflectionManager.is1_7() || ReflectionManager.is1_8())
+                {
+                    newWatcher.setObject(watchableObject.getIndex(), watchableObject.getValue());
+                    continue;
+                }
 
                 if (Registry.get(watchableObject.getValue().getClass()) == null)
                     continue;
@@ -996,8 +1027,10 @@ public class PacketsManager
                         byte yawValue = bytes.read(0);
                         byte pitchValue = bytes.read(1);
 
-                        bytes.write(0, getYaw(disguise.getType(), entity.getType(), yawValue));
-                        bytes.write(1, getPitch(disguise.getType(), DisguiseType.getType(entity.getType()), pitchValue));
+                        bytes.write(ReflectionManager.isPre1_9() && sentPacket.getType() != Server.ENTITY_TELEPORT ? 3 : 0,
+                                getYaw(disguise.getType(), entity.getType(), yawValue));
+                        bytes.write(ReflectionManager.isPre1_9() && sentPacket.getType() != Server.ENTITY_TELEPORT ? 4 : 1,
+                                getPitch(disguise.getType(), DisguiseType.getType(entity.getType()), pitchValue));
 
                         if (sentPacket.getType() == Server.ENTITY_TELEPORT && disguise.getType() == DisguiseType.ITEM_FRAME)
                         {
