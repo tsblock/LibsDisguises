@@ -1,11 +1,12 @@
 package me.libraryaddict.disguise.utilities.backwards.metadata;
 
-import com.google.common.base.Optional;
 import me.libraryaddict.disguise.disguisetypes.MetaIndex;
 import me.libraryaddict.disguise.disguisetypes.watchers.DroppedItemWatcher;
 import me.libraryaddict.disguise.disguisetypes.watchers.HorseWatcher;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
+
+import java.util.Optional;
 
 /**
  * Created by libraryaddict on 9/06/2017.

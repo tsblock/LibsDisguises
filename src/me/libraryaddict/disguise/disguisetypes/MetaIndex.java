@@ -6,7 +6,6 @@ import com.comphenix.protocol.wrappers.Vector3F;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import com.comphenix.protocol.wrappers.nbt.NbtFactory;
-import com.google.common.base.Optional;
 import me.libraryaddict.disguise.disguisetypes.watchers.*;
 import org.bukkit.Color;
 import org.bukkit.Material;
@@ -83,7 +82,7 @@ public class MetaIndex<Y> {
             new ItemStack(Material.STONE));
 
     public static MetaIndex<Optional<BlockPosition>> ENDER_CRYSTAL_BEAM = new MetaIndex<>(EnderCrystalWatcher.class, 0,
-            Optional.<BlockPosition>absent());
+            Optional.empty());
 
     public static MetaIndex<Boolean> ENDER_CRYSTAL_PLATE = new MetaIndex<>(EnderCrystalWatcher.class, 1, false);
 
@@ -92,7 +91,7 @@ public class MetaIndex<Y> {
     public static MetaIndex<Boolean> ENDERMAN_AGRESSIVE = new MetaIndex<>(EndermanWatcher.class, 1, false);
 
     public static MetaIndex<Optional<WrappedBlockData>> ENDERMAN_ITEM = new MetaIndex<>(EndermanWatcher.class, 0,
-            Optional.<WrappedBlockData>absent());
+            Optional.empty());
 
     public static MetaIndex<Integer> ENTITY_AIR_TICKS = new MetaIndex<>(FlagWatcher.class, 1, 0);
 
@@ -132,7 +131,7 @@ public class MetaIndex<Y> {
     public static MetaIndex<Byte> HORSE_META = new MetaIndex<>(AbstractHorseWatcher.class, 0, (byte) 0);
 
     public static MetaIndex<Optional<UUID>> HORSE_OWNER = new MetaIndex<>(AbstractHorseWatcher.class, 1,
-            Optional.<UUID>absent());
+            Optional.empty());
 
     public static MetaIndex<Byte> ILLAGER_META = new MetaIndex<>(IllagerWatcher.class, 0, (byte) 0);
 
@@ -204,7 +203,7 @@ public class MetaIndex<Y> {
     public static MetaIndex<Byte> SHEEP_WOOL = new MetaIndex<>(SheepWatcher.class, 0, (byte) 0);
 
     public static MetaIndex<Optional<BlockPosition>> SHULKER_ATTACHED = new MetaIndex<>(ShulkerWatcher.class, 1,
-            Optional.<BlockPosition>absent());
+            Optional.empty());
 
     public static MetaIndex<Byte> SHULKER_COLOR = new MetaIndex<>(ShulkerWatcher.class, 3, (byte) 10);
 
@@ -225,7 +224,7 @@ public class MetaIndex<Y> {
     public static MetaIndex<Byte> TAMEABLE_META = new MetaIndex<>(TameableWatcher.class, 0, (byte) 0);
 
     public static MetaIndex<Optional<UUID>> TAMEABLE_OWNER = new MetaIndex<>(TameableWatcher.class, 1,
-            Optional.<UUID>absent());
+            Optional.empty());
 
     public static MetaIndex<Integer> TIPPED_ARROW_COLOR = new MetaIndex<>(ArrowWatcher.class, 1, Color.WHITE.asRGB());
 
@@ -349,10 +348,10 @@ public class MetaIndex<Y> {
                         continue;
 
                     if (found != null) {
-                        System.err.println(entry.getKey()
-                                .getSimpleName() + " has multiple FlagType's registered for the index " + i + " (" + type
-                                .getFlagWatcher().getSimpleName() + ", " + found.getFlagWatcher()
-                                .getSimpleName() + ")");
+                        System.err.println(
+                                entry.getKey().getSimpleName() + " has multiple FlagType's registered for the index " +
+                                        i + " (" + type.getFlagWatcher().getSimpleName() + ", " +
+                                        found.getFlagWatcher().getSimpleName() + ")");
                         continue loop;
                     }
 
@@ -377,8 +376,9 @@ public class MetaIndex<Y> {
 
                 MetaIndex index = (MetaIndex) field.get(null);
 
-                toPrint.add(index.getFlagWatcher().getSimpleName() + " " + field.getName() + " " + index
-                        .getIndex() + " " + index.getDefault().getClass().getSimpleName());
+                toPrint.add(
+                        index.getFlagWatcher().getSimpleName() + " " + field.getName() + " " + index.getIndex() + " " +
+                                index.getDefault().getClass().getSimpleName());
             }
         }
         catch (Exception ex) {
@@ -460,15 +460,15 @@ public class MetaIndex<Y> {
             }
 
             for (MetaIndex metaIndex : values()) {
-                if (metaIndex == null || metaIndex.getFlagWatcher() != index.getFlagWatcher() || metaIndex
-                        .getIndex() != index.getIndex()) {
+                if (metaIndex == null || metaIndex.getFlagWatcher() != index.getFlagWatcher() ||
+                        metaIndex.getIndex() != index.getIndex()) {
                     continue;
                 }
 
-                System.err.println("[LibsDisguises] MetaIndex " + metaIndex.getFlagWatcher()
-                        .getSimpleName() + " at index " + metaIndex
-                        .getIndex() + " has already registered this! (" + metaIndex.getDefault() + "," + index
-                        .getDefault() + ")");
+                System.err.println(
+                        "[LibsDisguises] MetaIndex " + metaIndex.getFlagWatcher().getSimpleName() + " at index " +
+                                metaIndex.getIndex() + " has already registered this! (" + metaIndex.getDefault() +
+                                "," + index.getDefault() + ")");
             }
 
             values()[i] = metaIndexes[a];

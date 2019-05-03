@@ -1,13 +1,12 @@
 package me.libraryaddict.disguise.disguisetypes.watchers;
 
+import com.comphenix.protocol.wrappers.WrappedBlockData;
+import me.libraryaddict.disguise.disguisetypes.Disguise;
+import me.libraryaddict.disguise.disguisetypes.MetaIndex;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
-import com.comphenix.protocol.wrappers.WrappedBlockData;
-import com.google.common.base.Optional;
-
-import me.libraryaddict.disguise.disguisetypes.Disguise;
-import me.libraryaddict.disguise.disguisetypes.MetaIndex;
+import java.util.Optional;
 
 public class EndermanWatcher extends InsentientWatcher
 {
@@ -58,7 +57,7 @@ public class EndermanWatcher extends InsentientWatcher
         Optional<WrappedBlockData> optional;
 
         if (type == null)
-            optional = Optional.<WrappedBlockData> absent();
+            optional = Optional.empty();
         else
             optional = Optional.<WrappedBlockData> of(WrappedBlockData.createData(type, data));
 

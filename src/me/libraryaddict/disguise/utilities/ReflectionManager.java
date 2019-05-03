@@ -7,7 +7,6 @@ import com.comphenix.protocol.wrappers.WrappedDataWatcher.Serializer;
 import com.comphenix.protocol.wrappers.WrappedDataWatcher.WrappedDataWatcherObject;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import com.comphenix.protocol.wrappers.nbt.NbtWrapper;
-import com.google.common.base.Optional;
 import me.libraryaddict.disguise.disguisetypes.DisguiseType;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.bukkit.*;
@@ -18,6 +17,7 @@ import org.bukkit.potion.PotionEffect;
 
 import java.lang.reflect.*;
 import java.util.UUID;
+import java.util.Optional;
 
 public class ReflectionManager {
     private static final String bukkitVersion = Bukkit.getServer().getClass().getName().split("\\.")[3];
@@ -810,7 +810,7 @@ public class ReflectionManager {
                 val = getNmsItem((ItemStack) val);
 
                 if (val == null)
-                    return Optional.absent();
+                    return Optional.empty();
                 else
                     return Optional.of(val);
             }
