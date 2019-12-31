@@ -11,8 +11,8 @@ public class WolfWatcher extends TameableWatcher {
         super(disguise);
     }
 
-    public AnimalColor getCollarColor() {
-        return AnimalColor.getColorByWool(getData(MetaIndex.WOLF_COLLAR));
+    public DyeColor getCollarColor() {
+        return AnimalColor.getColorByWool(getData(MetaIndex.WOLF_COLLAR)).getDyeColor();
     }
 
     /**
@@ -61,7 +61,7 @@ public class WolfWatcher extends TameableWatcher {
             setTamed(true);
         }
 
-        if (newColor == getCollarColor().getDyeColor()) {
+        if (newColor == getCollarColor()) {
             return;
         }
 
