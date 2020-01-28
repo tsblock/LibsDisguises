@@ -45,6 +45,8 @@ public class LibsDisguises extends JavaPlugin {
                             "reloads gracefully!");
         }
 
+        getLogger().info("This is a custom build for 1.14!");
+
         instance = this;
 
         if (!new File(getDataFolder(), "disguises.yml").exists()) {
@@ -70,7 +72,7 @@ public class LibsDisguises extends JavaPlugin {
 
         if (!ReflectionManager.getMinecraftVersion().startsWith("1.14.4")) {
             getLogger().severe("You're using the wrong version of Lib's Disguises for your server! This is " +
-                    "intended for 1.15!");
+                    "intended for 1.14!");
             getPluginLoader().disablePlugin(this);
             return;
         }
