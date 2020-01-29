@@ -82,6 +82,15 @@ public class DisguiseConfig {
     private static UpdatesBranch updatesBranch = UpdatesBranch.SAME_BUILDS;
     private static int playerDisguisesTablistExpires;
     private static boolean dynamicExpiry;
+    private static boolean playerHideArmor;
+
+    public static boolean isPlayerHideArmor() {
+        return playerHideArmor;
+    }
+
+    public static void setPlayerHideArmor(boolean playerHiddenArmor) {
+        playerHideArmor = playerHiddenArmor;
+    }
 
     public static boolean isDynamicExpiry() {
         return dynamicExpiry;
@@ -336,6 +345,7 @@ public class DisguiseConfig {
         setUUIDGeneratedVersion(config.getInt("UUIDVersion"));
         setPlayerDisguisesTablistExpires(config.getInt("PlayerDisguisesTablistExpires"));
         setDynamicExpiry(config.getBoolean("DynamicExpiry"));
+        setPlayerHideArmor(config.getBoolean("PlayerHideArmor"));
 
         if (!LibsPremium.isPremium() && (isSavePlayerDisguises() || isSaveEntityDisguises())) {
             DisguiseUtilities.getLogger().warning("You must purchase the plugin to use saved disguises!");

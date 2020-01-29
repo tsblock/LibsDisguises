@@ -16,6 +16,7 @@ import org.bukkit.entity.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.util.Vector;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -968,6 +969,19 @@ public class ReflectionManager {
     public static Object createMinecraftKey(String name) {
         try {
             return getNmsClass("MinecraftKey").getConstructor(String.class).newInstance(name);
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public static Object getVec3D(Vector vector) {
+        try {
+            Constructor c = getNmsConstructor("Vec3D", double.class, double.class, double.class);
+
+            return c.newInstance(vector.getX(), vector.getY(), vector.getZ());
         }
         catch (Exception ex) {
             ex.printStackTrace();
