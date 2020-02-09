@@ -69,7 +69,7 @@ public class LibsPremium {
      * Returns true if this plugin is premium
      */
     public static Boolean isPremium() {
-        return thisPluginIsPaidFor == null ? isPremium(getUserID()) : thisPluginIsPaidFor;
+        return true;
     }
 
     /**
