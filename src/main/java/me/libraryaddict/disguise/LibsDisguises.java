@@ -8,6 +8,7 @@ import me.libraryaddict.disguise.utilities.packets.PacketsManager;
 import me.libraryaddict.disguise.utilities.parser.DisguiseParser;
 import me.libraryaddict.disguise.utilities.reflection.NmsVersion;
 import me.libraryaddict.disguise.utilities.reflection.ReflectionManager;
+import me.libraryaddict.disguise.utilities.reflection.asm.WatcherSanitizer;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandExecutor;
@@ -16,10 +17,10 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class LibsDisguises extends JavaPlugin {
     private static LibsDisguises instance;
@@ -29,13 +30,17 @@ public class LibsDisguises extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        if (Bukkit.getServer().getWorlds().isEmpty()) {
+        instance = this;
+
+        if (!Bukkit.getServer().getWorlds().isEmpty()) {
+            reloaded = true;
+            getLogger()
+                    .severe("Lib's Disguises was reloaded! Please do not report any bugs! This plugin can't handle " +
+                            "reloads gracefully!");
             return;
         }
 
-        reloaded = true;
-        getLogger().severe("Lib's Disguises was reloaded! Please do not report any bugs! This plugin can't handle " +
-                "reloads gracefully!");
+        WatcherSanitizer.init();
     }
 
     @Override
@@ -45,8 +50,6 @@ public class LibsDisguises extends JavaPlugin {
                     .severe("Lib's Disguises was reloaded! Please do not report any bugs! This plugin can't handle " +
                             "reloads gracefully!");
         }
-
-        instance = this;
 
         if (!new File(getDataFolder(), "disguises.yml").exists()) {
             saveResource("disguises.yml", false);
@@ -71,7 +74,9 @@ public class LibsDisguises extends JavaPlugin {
 
         if (ReflectionManager.getVersion() == null) {
             getLogger().severe("You're using the wrong version of Lib's Disguises for your server! This is " +
-                    "intended for 1.14 & 1.15!");
+                    "intended for " + StringUtils
+                    .join(Arrays.stream(NmsVersion.values()).map(v -> v.name().replace("_", "."))
+                            .collect(Collectors.toList()), " & ") + "!");
             getPluginLoader().disablePlugin(this);
             return;
         }

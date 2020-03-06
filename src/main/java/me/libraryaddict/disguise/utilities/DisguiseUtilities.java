@@ -5,6 +5,10 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.*;
+import com.comphenix.protocol.wrappers.nbt.NbtBase;
+import com.comphenix.protocol.wrappers.nbt.NbtCompound;
+import com.comphenix.protocol.wrappers.nbt.NbtList;
+import com.comphenix.protocol.wrappers.nbt.NbtType;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
@@ -22,14 +26,11 @@ import me.libraryaddict.disguise.utilities.json.*;
 import me.libraryaddict.disguise.utilities.mineskin.MineSkinAPI;
 import me.libraryaddict.disguise.utilities.packets.LibsPackets;
 import me.libraryaddict.disguise.utilities.packets.PacketsManager;
-import me.libraryaddict.disguise.utilities.reflection.DisguiseValues;
-import me.libraryaddict.disguise.utilities.reflection.FakeBoundingBox;
-import me.libraryaddict.disguise.utilities.reflection.LibsProfileLookup;
-import me.libraryaddict.disguise.utilities.reflection.ReflectionManager;
+import me.libraryaddict.disguise.utilities.reflection.*;
 import me.libraryaddict.disguise.utilities.translations.LibsMsg;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.bukkit.*;
-import org.bukkit.craftbukkit.libs.org.apache.commons.io.FileUtils;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -41,17 +42,16 @@ import org.bukkit.scoreboard.Team.Option;
 import org.bukkit.scoreboard.Team.OptionStatus;
 import org.bukkit.util.Vector;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.lang.reflect.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class DisguiseUtilities {
     public static class ExtendedName {
@@ -111,7 +111,6 @@ public class DisguiseUtilities {
     private static final HashMap<String, ArrayList<Object>> runnables = new HashMap<>();
     @Getter
     private static HashSet<UUID> selfDisguised = new HashSet<>();
-    private static Thread mainThread;
     private static HashMap<UUID, String> preDisguiseTeam = new HashMap<>();
     private static HashMap<UUID, String> disguiseTeam = new HashMap<>();
     private static File profileCache = new File("plugins/LibsDisguises/GameProfiles"), savedDisguises = new File(
@@ -132,6 +131,8 @@ public class DisguiseUtilities {
     @Getter
     private static MineSkinAPI mineSkinAPI = new MineSkinAPI();
     private static HashMap<String, ExtendedName> extendedNames = new HashMap<>();
+    @Getter
+    private static boolean invalidFile;
 
     public static void setPlayerVelocity(Player player) {
         if (player == null) {
@@ -321,7 +322,13 @@ public class DisguiseUtilities {
         }
 
         try {
-            String cached = FileUtils.readFileToString(disguiseFile, "UTF-8");
+            String cached = null;
+
+            try (FileInputStream input = new FileInputStream(
+                    disguiseFile); InputStreamReader inputReader = new InputStreamReader(input,
+                    StandardCharsets.UTF_8); BufferedReader reader = new BufferedReader(inputReader)) {
+                cached = reader.lines().collect(Collectors.joining("\n"));
+            }
 
             if (remove) {
                 removeSavedDisguise(entityUUID);
@@ -515,7 +522,7 @@ public class DisguiseUtilities {
      * Sends entity removal packets, as this disguise was removed
      */
     public static void destroyEntity(TargetedDisguise disguise) {
-        if (mainThread != Thread.currentThread())
+        if (!Bukkit.isPrimaryThread())
             throw new IllegalStateException("Cannot modify disguises on an async thread");
 
         try {
@@ -696,7 +703,7 @@ public class DisguiseUtilities {
      * @return
      */
     public static List<Player> getPerverts(Disguise disguise) {
-        if (mainThread != Thread.currentThread())
+        if (!Bukkit.isPrimaryThread())
             throw new IllegalStateException("Cannot modify disguises on an async thread");
 
         if (disguise.getEntity() == null)
@@ -895,16 +902,6 @@ public class DisguiseUtilities {
 
         gson = gsonBuilder.create();
 
-        try {
-            Field threadField = ReflectionManager.getNmsField("MinecraftServer", "serverThread");
-            threadField.setAccessible(true);
-
-            mainThread = (Thread) threadField.get(ReflectionManager.getMinecraftServer());
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
         if (!profileCache.exists())
             profileCache.mkdirs();
 
@@ -912,6 +909,10 @@ public class DisguiseUtilities {
             savedDisguises.mkdirs();
 
         cachedNames.addAll(Arrays.asList(profileCache.list()));
+
+        invalidFile = new File(
+                LibsDisguises.getInstance().getClass().getProtectionDomain().getCodeSource().getLocation().getFile())
+                .getName().toLowerCase().matches(".*((crack)|(null)|(leak)).*");
 
         for (String key : savedDisguises.list()) {
             try {
@@ -953,7 +954,7 @@ public class DisguiseUtilities {
      * Resends the entity to this specific player
      */
     public static void refreshTracker(final TargetedDisguise disguise, String player) {
-        if (mainThread != Thread.currentThread())
+        if (!Bukkit.isPrimaryThread())
             throw new IllegalStateException("Cannot modify disguises on an async thread");
 
         if (disguise.getEntity() == null || !disguise.getEntity().isValid())
@@ -990,10 +991,12 @@ public class DisguiseUtilities {
                         .get(entityTrackerEntry);
 
                 Method clear = ReflectionManager
-                        .getNmsMethod("EntityTrackerEntry", "a", ReflectionManager.getNmsClass("EntityPlayer"));
+                        .getNmsMethod("EntityTrackerEntry", NmsVersion.v1_14.isSupported() ? "a" : "clear",
+                                ReflectionManager.getNmsClass("EntityPlayer"));
 
                 final Method updatePlayer = ReflectionManager
-                        .getNmsMethod("EntityTrackerEntry", "b", ReflectionManager.getNmsClass("EntityPlayer"));
+                        .getNmsMethod("EntityTrackerEntry", NmsVersion.v1_14.isSupported() ? "b" : "updatePlayer",
+                                ReflectionManager.getNmsClass("EntityPlayer"));
 
                 trackedPlayers = (Set) new HashSet(trackedPlayers).clone(); // Copy before iterating to prevent
                 // ConcurrentModificationException
@@ -1030,7 +1033,7 @@ public class DisguiseUtilities {
      * A convenience method for me to refresh trackers in other plugins
      */
     public static void refreshTrackers(Entity entity) {
-        if (mainThread != Thread.currentThread())
+        if (!Bukkit.isPrimaryThread())
             throw new IllegalStateException("Cannot modify disguises on an async thread");
 
         if (entity.isValid()) {
@@ -1044,10 +1047,12 @@ public class DisguiseUtilities {
                             .get(entityTrackerEntry);
 
                     Method clear = ReflectionManager
-                            .getNmsMethod("EntityTrackerEntry", "a", ReflectionManager.getNmsClass("EntityPlayer"));
+                            .getNmsMethod("EntityTrackerEntry", NmsVersion.v1_14.isSupported() ? "a" : "clear",
+                                    ReflectionManager.getNmsClass("EntityPlayer"));
 
                     final Method updatePlayer = ReflectionManager
-                            .getNmsMethod("EntityTrackerEntry", "b", ReflectionManager.getNmsClass("EntityPlayer"));
+                            .getNmsMethod("EntityTrackerEntry", NmsVersion.v1_14.isSupported() ? "b" : "updatePlayer",
+                                    ReflectionManager.getNmsClass("EntityPlayer"));
 
                     trackedPlayers = (Set) new HashSet(trackedPlayers).clone(); // Copy before iterating to prevent
                     // ConcurrentModificationException
@@ -1081,7 +1086,7 @@ public class DisguiseUtilities {
      * Resends the entity to all the watching players, which is where the magic begins
      */
     public static void refreshTrackers(final TargetedDisguise disguise) {
-        if (mainThread != Thread.currentThread())
+        if (!Bukkit.isPrimaryThread())
             throw new IllegalStateException("Cannot modify disguises on an async thread");
 
         if (!disguise.getEntity().isValid()) {
@@ -1115,10 +1120,12 @@ public class DisguiseUtilities {
                         .get(entityTrackerEntry);
 
                 final Method clear = ReflectionManager
-                        .getNmsMethod("EntityTrackerEntry", "a", ReflectionManager.getNmsClass("EntityPlayer"));
+                        .getNmsMethod("EntityTrackerEntry", NmsVersion.v1_14.isSupported() ? "a" : "clear",
+                                ReflectionManager.getNmsClass("EntityPlayer"));
 
                 final Method updatePlayer = ReflectionManager
-                        .getNmsMethod("EntityTrackerEntry", "b", ReflectionManager.getNmsClass("EntityPlayer"));
+                        .getNmsMethod("EntityTrackerEntry", NmsVersion.v1_14.isSupported() ? "b" : "updatePlayer",
+                                ReflectionManager.getNmsClass("EntityPlayer"));
 
                 trackedPlayers = (Set) new HashSet(trackedPlayers).clone();
                 PacketContainer destroyPacket = getDestroyPacket(disguise.getEntity().getEntityId());
@@ -1179,7 +1186,7 @@ public class DisguiseUtilities {
     }
 
     public static void removeSelfDisguise(Player player) {
-        if (mainThread != Thread.currentThread())
+        if (!Bukkit.isPrimaryThread())
             throw new IllegalStateException("Cannot modify disguises on an async thread");
 
         if (!selfDisguised.contains(player.getUniqueId())) {
@@ -1700,7 +1707,7 @@ public class DisguiseUtilities {
      * Sends the self disguise to the player
      */
     public static void sendSelfDisguise(final Player player, final TargetedDisguise disguise) {
-        if (mainThread != Thread.currentThread())
+        if (!Bukkit.isPrimaryThread())
             throw new IllegalStateException("Cannot modify disguises on an async thread");
 
         try {
@@ -1755,7 +1762,8 @@ public class DisguiseUtilities {
             boolean isMoving = false;
 
             try {
-                Field field = ReflectionManager.getNmsClass("EntityTrackerEntry").getDeclaredField("q");
+                Field field = ReflectionManager.getNmsClass("EntityTrackerEntry")
+                        .getDeclaredField(NmsVersion.v1_14.isSupported() ? "q" : "isMoving");
                 field.setAccessible(true);
                 isMoving = field.getBoolean(entityTrackerEntry);
             }
@@ -1815,14 +1823,6 @@ public class DisguiseUtilities {
                             ReflectionManager.getNmsItem(player.getInventory().getItemInOffHand())));
 
             Location loc = player.getLocation();
-
-            // If the disguised is sleeping for w/e reason
-            if (player.isSleeping()) {
-            /*    sendSelfPacket(player,
-                        manager.createPacketConstructor(Server.BED, player, ReflectionManager.getBlockPosition(0, 0, 0))
-                                .createPacket(player, ReflectionManager
-                                        .getBlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ())));*/
-            }
 
             // Resend any active potion effects
             for (PotionEffect potionEffect : player.getActivePotionEffects()) {
@@ -1955,6 +1955,70 @@ public class DisguiseUtilities {
                         " (" + ((Optional) value).get().getClass().getName() + ")" :
                         value instanceof Optional || value == null ? "" : " " + value.getClass().getName()) +
                 "! Are you running " + "the latest " + "version of " + "ProtocolLib?");
+    }
+
+    public static String serialize(NbtBase base) {
+        return serialize(0, base);
+    }
+
+    private static String serialize(int depth, NbtBase base) {
+        switch (base.getType()) {
+            case TAG_COMPOUND:
+                StringBuilder builder = new StringBuilder();
+
+                builder.append("{");
+
+                for (String key : ((NbtCompound) base).getKeys()) {
+                    NbtBase<Object> nbt = ((NbtCompound) base).getValue(key);
+                    String val = serialize(depth + 1, nbt);
+
+                    // Skip root empty values
+                    if (depth == 0 && val.matches("0(\\.0)?")) {
+                        continue;
+                    }
+
+                    if (builder.length() != 1) {
+                        builder.append(",");
+                    }
+
+                    builder.append(key).append(":").append(val);
+                }
+
+                builder.append("}");
+
+                return builder.toString();
+            case TAG_LIST:
+                Collection col = ((NbtList) base).asCollection();
+
+                return "[" + StringUtils.join(col.stream().map(b -> serialize(depth + 1, (NbtBase) b)).toArray(), ",") +
+                        "]";
+            case TAG_BYTE_ARRAY:
+            case TAG_INT_ARRAY:
+            case TAG_LONG_ARRAY:
+                Object[] array = (Object[]) base.getValue();
+                String[] str = new String[array.length];
+
+                for (int i = 0; i < array.length; i++) {
+                    str[i] = array[i].toString();//+ getChar(base.getType());
+                }
+
+                return "[" + StringUtils.join(str, ",") + "]";
+            case TAG_BYTE:
+            case TAG_INT:
+            case TAG_LONG:
+            case TAG_FLOAT:
+            case TAG_SHORT:
+            case TAG_DOUBLE:
+                return base.getValue().toString();// + getChar(base.getType());
+            case TAG_STRING:
+                String val = (String) base.getValue();
+
+                return "\"" + val.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+            case TAG_END:
+                return "";
+            default:
+                throw new IllegalArgumentException();
+        }
     }
 
     /**

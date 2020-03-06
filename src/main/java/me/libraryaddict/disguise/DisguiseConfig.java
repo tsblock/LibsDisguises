@@ -10,17 +10,18 @@ import me.libraryaddict.disguise.utilities.packets.PacketsManager;
 import me.libraryaddict.disguise.utilities.parser.DisguiseParseException;
 import me.libraryaddict.disguise.utilities.parser.DisguiseParser;
 import me.libraryaddict.disguise.utilities.parser.DisguisePerm;
+import me.libraryaddict.disguise.utilities.reflection.NmsVersion;
 import me.libraryaddict.disguise.utilities.translations.LibsMsg;
 import me.libraryaddict.disguise.utilities.translations.TranslateType;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.libs.org.apache.commons.io.FileUtils;
 import org.bukkit.entity.Entity;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -308,9 +309,11 @@ public class DisguiseConfig {
 
             try {
                 explain.createNewFile();
-                FileUtils.write(explain,
-                        "This folder is used to store .png files for uploading with the /savedisguise or /grabskin " +
-                                "commands");
+
+                try (PrintWriter out = new PrintWriter(explain)) {
+                    out.println("This folder is used to store .png files for uploading with the /savedisguise or " +
+                            "/grabskin " + "commands");
+                }
             }
             catch (IOException e) {
                 e.printStackTrace();
@@ -462,6 +465,11 @@ public class DisguiseConfig {
 
         for (String key : section.getKeys(false)) {
             String toParse = section.getString(key);
+
+            if (!NmsVersion.v1_13.isSupported() && key.equals("libraryaddict")) {
+                toParse = toParse.replace("GOLDEN_BOOTS,GOLDEN_LEGGINGS,GOLDEN_CHESTPLATE,GOLDEN_HELMET",
+                        "GOLD_BOOTS,GOLD_LEGGINGS,GOLD_CHESTPLATE,GOLD_HELMET");
+            }
 
             try {
                 addCustomDisguise(key, toParse);

@@ -12,11 +12,11 @@ import me.libraryaddict.disguise.disguisetypes.*;
 import me.libraryaddict.disguise.disguisetypes.watchers.FallingBlockWatcher;
 import me.libraryaddict.disguise.disguisetypes.watchers.LivingWatcher;
 import me.libraryaddict.disguise.utilities.DisguiseUtilities;
+import me.libraryaddict.disguise.utilities.DisguiseValues;
 import me.libraryaddict.disguise.utilities.LibsPremium;
 import me.libraryaddict.disguise.utilities.packets.IPacketHandler;
 import me.libraryaddict.disguise.utilities.packets.LibsPackets;
 import me.libraryaddict.disguise.utilities.packets.PacketsHandler;
-import me.libraryaddict.disguise.utilities.reflection.DisguiseValues;
 import me.libraryaddict.disguise.utilities.reflection.NmsVersion;
 import me.libraryaddict.disguise.utilities.reflection.ReflectionManager;
 import org.bukkit.Art;
@@ -225,7 +225,7 @@ public class PacketHandlerSpawn implements IPacketHandler {
 
             packets.addPacket(spawnPlayer);
 
-            if (ReflectionManager.isSupported(NmsVersion.v1_15)) {
+            if (NmsVersion.v1_15.isSupported()) {
                 PacketContainer metaPacket = ProtocolLibrary.getProtocolManager()
                         .createPacketConstructor(PacketType.Play.Server.ENTITY_METADATA, entityId, newWatcher, true)
                         .createPacket(entityId, newWatcher, true);
@@ -314,7 +314,7 @@ public class PacketHandlerSpawn implements IPacketHandler {
                     .createSanitizedDataWatcher(WrappedDataWatcher.getEntityWatcher(disguisedEntity),
                             disguise.getWatcher());
 
-            if (ReflectionManager.isSupported(NmsVersion.v1_15)) {
+            if (NmsVersion.v1_15.isSupported()) {
                 PacketContainer metaPacket = ProtocolLibrary.getProtocolManager()
                         .createPacketConstructor(PacketType.Play.Server.ENTITY_METADATA, disguisedEntity.getEntityId(),
                                 newWatcher, true).createPacket(disguisedEntity.getEntityId(), newWatcher, true);
@@ -348,14 +348,26 @@ public class PacketHandlerSpawn implements IPacketHandler {
                 data = ((((int) loc.getYaw() % 360) + 720 + 45) / 90) % 4;
             }
 
-            Object entityType = ReflectionManager.getEntityType(disguise.getType().getEntityType());
+            PacketContainer spawnEntity;
 
-            Object[] params = new Object[]{disguisedEntity.getEntityId(), disguisedEntity.getUniqueId(), x, y, z,
-                    loc.getPitch(), loc.getYaw(), entityType, data,
-                    ReflectionManager.getVec3D(disguisedEntity.getVelocity())};
+            if (NmsVersion.v1_14.isSupported()) {
+                Object entityType = ReflectionManager.getEntityType(disguise.getType().getEntityType());
 
-            PacketContainer spawnEntity = ProtocolLibrary.getProtocolManager()
-                    .createPacketConstructor(PacketType.Play.Server.SPAWN_ENTITY, params).createPacket(params);
+                Object[] params = new Object[]{disguisedEntity.getEntityId(), disguisedEntity.getUniqueId(), x, y, z,
+                        loc.getPitch(), loc.getYaw(), entityType, data,
+                        ReflectionManager.getVec3D(disguisedEntity.getVelocity())};
+
+                spawnEntity = ProtocolLibrary.getProtocolManager()
+                        .createPacketConstructor(PacketType.Play.Server.SPAWN_ENTITY, params).createPacket(params);
+            } else {
+                int objectId = disguise.getType().getObjectId();
+                Object nmsEntity = ReflectionManager.getNmsEntity(disguisedEntity);
+
+                spawnEntity = ProtocolLibrary.getProtocolManager()
+                        .createPacketConstructor(PacketType.Play.Server.SPAWN_ENTITY, nmsEntity, objectId, data)
+                        .createPacket(nmsEntity, objectId, data);
+            }
+
             packets.addPacket(spawnEntity);
 
             // If it's not the same type, then highly likely they have different velocity settings which we'd want to
@@ -421,14 +433,14 @@ public class PacketHandlerSpawn implements IPacketHandler {
                     itemToSend = disguise.getWatcher().getItemStack(slot);
 
                     // If the disguise armor isn't visible
-                    if (itemToSend == null || itemToSend.getType() != Material.AIR) {
+                    if (itemToSend == null) {
                         itemToSend = ReflectionManager.getEquipment(slot, disguisedEntity);
 
                         // If natural armor isn't sent either
                         if (itemToSend == null || itemToSend.getType() == Material.AIR) {
                             continue;
                         }
-                    } else {
+                    } else if (itemToSend.getType() == Material.AIR) {
                         // Its air which shouldn't be sent
                         continue;
                     }

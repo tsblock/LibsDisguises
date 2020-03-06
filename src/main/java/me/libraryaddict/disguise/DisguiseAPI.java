@@ -4,7 +4,6 @@ import com.comphenix.protocol.wrappers.WrappedGameProfile;
 import me.libraryaddict.disguise.disguisetypes.*;
 import me.libraryaddict.disguise.disguisetypes.TargetedDisguise.TargetType;
 import me.libraryaddict.disguise.disguisetypes.watchers.AbstractHorseWatcher;
-import me.libraryaddict.disguise.disguisetypes.watchers.HorseWatcher;
 import me.libraryaddict.disguise.disguisetypes.watchers.LivingWatcher;
 import me.libraryaddict.disguise.utilities.DisguiseUtilities;
 import me.libraryaddict.disguise.utilities.parser.DisguiseParseException;
@@ -88,10 +87,12 @@ public class DisguiseAPI {
         return disguise.getValue();
     }
 
+    @Deprecated
     public static Disguise constructDisguise(Entity entity) {
         return constructDisguise(entity, true, true, true);
     }
 
+    @Deprecated
     public static Disguise constructDisguise(Entity entity, boolean doEquipment, boolean doSneak, boolean doSprint) {
         DisguiseType disguiseType = DisguiseType.getType(entity);
         Disguise disguise;
