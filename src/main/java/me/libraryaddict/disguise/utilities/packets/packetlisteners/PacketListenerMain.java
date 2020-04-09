@@ -51,7 +51,7 @@ public class PacketListenerMain extends PacketAdapter {
             packets = PacketsManager.getPacketsHandler()
                     .transformPacket(event.getPacket(), disguise, observer, disguise.getEntity());
         }
-        catch (Exception ex) {
+        catch (Throwable ex) {
             ex.printStackTrace();
             event.setCancelled(true);
             return;
@@ -60,8 +60,6 @@ public class PacketListenerMain extends PacketAdapter {
         if (packets.isUnhandled()) {
             return;
         }
-
-        packets.setSpawnPacketCheck(event.getPacketType());
 
         event.setCancelled(true);
 

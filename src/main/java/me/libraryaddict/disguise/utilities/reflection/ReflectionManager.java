@@ -126,9 +126,7 @@ public class ReflectionManager {
         if (obj.isAnnotationPresent(NmsRemovedIn.class)) {
             NmsRemovedIn removed = obj.getAnnotation(NmsRemovedIn.class);
 
-            if (removed.val().isSupported()) {
-                return false;
-            }
+            return !removed.val().isSupported();
         }
 
         return true;
@@ -353,6 +351,17 @@ public class ReflectionManager {
     public static ItemStack getBukkitItem(Object nmsItem) {
         try {
             return (ItemStack) craftItemClass.getMethod("asBukkitCopy", getNmsClass("ItemStack")).invoke(null, nmsItem);
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public static ItemStack getCraftItem(ItemStack bukkitItem) {
+        try {
+            return (ItemStack) craftItemClass.getMethod("asCraftCopy", ItemStack.class).invoke(null, bukkitItem);
         }
         catch (Exception e) {
             e.printStackTrace();
@@ -705,7 +714,7 @@ public class ReflectionManager {
 
     public static double getPing(Player player) {
         try {
-            return (double) pingField.getInt(ReflectionManager.getNmsEntity(player));
+            return pingField.getInt(ReflectionManager.getNmsEntity(player));
         }
         catch (Exception ex) {
             ex.printStackTrace();

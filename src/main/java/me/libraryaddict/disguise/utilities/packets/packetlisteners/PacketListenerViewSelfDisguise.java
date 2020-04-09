@@ -77,8 +77,6 @@ public class PacketListenerViewSelfDisguise extends PacketAdapter {
                 transformed.getPackets().add(packet);
             }
 
-            transformed.setSpawnPacketCheck(event.getPacketType());
-
             for (PacketContainer newPacket : transformed.getPackets()) {
                 if (newPacket.getType() != Server.PLAYER_INFO) {
                     if (newPacket == packet) {
@@ -183,7 +181,7 @@ public class PacketListenerViewSelfDisguise extends PacketAdapter {
                 DisguiseUtilities.setPlayerVelocity(null);
             }
         }
-        catch (Exception ex) {
+        catch (Throwable ex) {
             event.setCancelled(true);
             ex.printStackTrace();
         }

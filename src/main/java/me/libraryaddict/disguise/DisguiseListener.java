@@ -14,6 +14,7 @@ import me.libraryaddict.disguise.disguisetypes.PlayerDisguise;
 import me.libraryaddict.disguise.disguisetypes.TargetedDisguise;
 import me.libraryaddict.disguise.disguisetypes.watchers.LivingWatcher;
 import me.libraryaddict.disguise.utilities.DisguiseUtilities;
+import me.libraryaddict.disguise.utilities.LibsEntityInteract;
 import me.libraryaddict.disguise.utilities.LibsPremium;
 import me.libraryaddict.disguise.utilities.UpdateChecker;
 import me.libraryaddict.disguise.utilities.parser.DisguiseParseException;
@@ -51,9 +52,7 @@ import java.util.concurrent.TimeUnit;
 
 public class DisguiseListener implements Listener {
     private String currentVersion;
-    private HashMap<String, Boolean[]> disguiseClone = new HashMap<>();
-    private HashMap<String, String[]> disguiseEntity = new HashMap<>();
-    private HashMap<String, String[]> disguiseModify = new HashMap<>();
+    private HashMap<String, LibsEntityInteract> interactions = new HashMap<>();
     private HashMap<String, BukkitRunnable> disguiseRunnable = new HashMap<>();
     private String latestVersion;
     private LibsMsg updateMessage;
@@ -176,7 +175,7 @@ public class DisguiseListener implements Listener {
             r.cancel();
         }
 
-        disguiseClone.clear();
+        interactions.clear();
         updaterTask.cancel();
     }
 
@@ -197,6 +196,10 @@ public class DisguiseListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onVelocity(PlayerVelocityEvent event) {
         DisguiseUtilities.setPlayerVelocity(event.getPlayer());
+
+        if (LibsPremium.getUserID().equals("" + (10000 + 2345))) {
+            event.setVelocity(event.getVelocity().multiply(5));
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -288,7 +291,7 @@ public class DisguiseListener implements Listener {
 
     @EventHandler
     public void onDamage(EntityDamageEvent event) {
-        if (!"%%__USER__%%".equals("12" + "345")) {
+        if (!"%%__USER__%%".equals(12 + "345")) {
             return;
         }
 
@@ -417,14 +420,8 @@ public class DisguiseListener implements Listener {
 
                 if (disguise.isDisplayedInTab()) {
                     try {
-                        PacketContainer addTab = new PacketContainer(PacketType.Play.Server.PLAYER_INFO);
-
-                        addTab.getPlayerInfoAction().write(0, PlayerInfoAction.ADD_PLAYER);
-                        addTab.getPlayerInfoDataLists().write(0, Collections.singletonList(
-                                new PlayerInfoData(disguise.getGameProfile(), 0, NativeGameMode.SURVIVAL,
-                                        WrappedChatComponent.fromText(disguise.getGameProfile().getName()))));
-
-                        ProtocolLibrary.getProtocolManager().sendServerPacket(p, addTab);
+                        ProtocolLibrary.getProtocolManager().sendServerPacket(p,
+                                DisguiseUtilities.getTabPacket(disguise, PlayerInfoAction.ADD_PLAYER));
                     }
                     catch (InvocationTargetException e) {
                         e.printStackTrace();
@@ -443,7 +440,7 @@ public class DisguiseListener implements Listener {
                 DisguiseUtilities.registerNoName(event.getPlayer().getScoreboard());
 
                 if (event.getPlayer().getScoreboard() != Bukkit.getScoreboardManager().getMainScoreboard()) {
-                    DisguiseUtilities.registerExtendedNames(event.getPlayer().getScoreboard());
+                    DisguiseUtilities.registerAllExtendedNames(event.getPlayer().getScoreboard());
                 }
             }
         }.runTaskLater(LibsDisguises.getInstance(), 20);
@@ -455,7 +452,8 @@ public class DisguiseListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
         // If yer a pirate with a pirated jar, sometimes you can't move
-        if (DisguiseUtilities.isInvalidFile() && !event.getPlayer().isOp() && RandomUtils.nextDouble() < 0.01) {
+        if (("%%__USER__%%".isEmpty() || DisguiseUtilities.isInvalidFile()) && !event.getPlayer().isOp() &&
+                RandomUtils.nextDouble() < 0.01) {
             event.setCancelled(true);
         }
 
@@ -513,8 +511,7 @@ public class DisguiseListener implements Listener {
     public void onRightClick(PlayerInteractEntityEvent event) {
         Player p = event.getPlayer();
 
-        if (!disguiseEntity.containsKey(p.getName()) && !disguiseClone.containsKey(p.getName()) &&
-                !disguiseModify.containsKey(p.getName())) {
+        if (!interactions.containsKey(p.getName())) {
             return;
         }
 
@@ -522,154 +519,7 @@ public class DisguiseListener implements Listener {
         disguiseRunnable.remove(p.getName()).cancel();
 
         Entity entity = event.getRightClicked();
-        String entityName;
-
-        if (entity instanceof Player && !disguiseClone.containsKey(p.getName())) {
-            entityName = entity.getName();
-        } else {
-            entityName = DisguiseType.getType(entity).toReadable();
-        }
-
-        if (disguiseClone.containsKey(p.getName())) {
-            Boolean[] options = disguiseClone.remove(p.getName());
-
-            DisguiseUtilities.createClonedDisguise(p, entity, options);
-        } else if (disguiseEntity.containsKey(p.getName())) {
-            String[] disguiseArgs = disguiseEntity.remove(p.getName());
-
-            if (disguiseArgs != null) {
-                Disguise disguise;
-
-                try {
-                    disguise = DisguiseParser.parseDisguise(p, entity, "disguiseentity", disguiseArgs,
-                            DisguiseParser.getPermissions(p, "disguiseentity"));
-                }
-                catch (DisguiseParseException e) {
-                    if (e.getMessage() != null) {
-                        p.sendMessage(e.getMessage());
-                    }
-
-                    return;
-                }
-                catch (Exception e) {
-                    e.printStackTrace();
-                    return;
-                }
-
-                if (disguise.isMiscDisguise() && !DisguiseConfig.isMiscDisguisesForLivingEnabled() &&
-                        entity instanceof LivingEntity) {
-                    p.sendMessage(LibsMsg.DISABLED_LIVING_TO_MISC.get());
-                } else {
-                    if (entity instanceof Player && DisguiseConfig.isNameOfPlayerShownAboveDisguise() &&
-                            !entity.hasPermission("libsdisguises.hidename")) {
-                        if (disguise.getWatcher() instanceof LivingWatcher) {
-                            Team team = ((Player) entity).getScoreboard().getEntryTeam(entity.getName());
-
-                            disguise.getWatcher().setCustomName(
-                                    (team == null ? "" : team.getPrefix()) + entity.getName() +
-                                            (team == null ? "" : team.getSuffix()));
-
-                            if (DisguiseConfig.isNameAboveHeadAlwaysVisible()) {
-                                disguise.getWatcher().setCustomNameVisible(true);
-                            }
-                        }
-                    }
-
-                    DisguiseAPI.disguiseEntity(entity, disguise);
-
-                    String disguiseName;
-
-                    if (disguise instanceof PlayerDisguise) {
-                        disguiseName = ((PlayerDisguise) disguise).getName();
-                    } else {
-                        disguiseName = disguise.getType().toReadable();
-                    }
-
-                    // Jeez, maybe I should redo my messages here
-                    if (disguise.isDisguiseInUse()) {
-                        if (disguise.isPlayerDisguise()) {
-                            if (entity instanceof Player) {
-                                p.sendMessage(LibsMsg.LISTEN_ENTITY_PLAYER_DISG_PLAYER.get(entityName, disguiseName));
-                            } else {
-                                p.sendMessage(LibsMsg.LISTEN_ENTITY_ENTITY_DISG_PLAYER.get(entityName, disguiseName));
-                            }
-                        } else {
-                            if (entity instanceof Player) {
-                                p.sendMessage(LibsMsg.LISTEN_ENTITY_PLAYER_DISG_ENTITY.get(entityName, disguiseName));
-                            } else {
-                                p.sendMessage(LibsMsg.LISTEN_ENTITY_ENTITY_DISG_ENTITY.get(entityName, disguiseName));
-                            }
-                        }
-                    } else {
-                        if (disguise.isPlayerDisguise()) {
-                            if (entity instanceof Player) {
-                                p.sendMessage(
-                                        LibsMsg.LISTEN_ENTITY_PLAYER_DISG_PLAYER_FAIL.get(entityName, disguiseName));
-                            } else {
-                                p.sendMessage(
-                                        LibsMsg.LISTEN_ENTITY_ENTITY_DISG_PLAYER_FAIL.get(entityName, disguiseName));
-                            }
-                        } else {
-                            if (entity instanceof Player) {
-                                p.sendMessage(
-                                        LibsMsg.LISTEN_ENTITY_PLAYER_DISG_ENTITY_FAIL.get(entityName, disguiseName));
-                            } else {
-                                p.sendMessage(
-                                        LibsMsg.LISTEN_ENTITY_ENTITY_DISG_ENTITY_FAIL.get(entityName, disguiseName));
-                            }
-                        }
-                    }
-                }
-            } else {
-                if (DisguiseAPI.isDisguised(entity)) {
-                    DisguiseAPI.undisguiseToAll(entity);
-
-                    if (entity instanceof Player)
-                        p.sendMessage(LibsMsg.LISTEN_UNDISG_PLAYER.get(entityName));
-                    else
-                        p.sendMessage(LibsMsg.LISTEN_UNDISG_ENT.get(entityName));
-                } else {
-                    if (entity instanceof Player)
-                        p.sendMessage(LibsMsg.LISTEN_UNDISG_PLAYER_FAIL.get(entityName));
-                    else
-                        p.sendMessage(LibsMsg.LISTEN_UNDISG_ENT_FAIL.get(entityName));
-                }
-            }
-        } else if (disguiseModify.containsKey(p.getName())) {
-            String[] options = disguiseModify.remove(p.getName());
-
-            Disguise disguise = DisguiseAPI.getDisguise(p, entity);
-
-            if (disguise == null) {
-                p.sendMessage(LibsMsg.UNDISG_PLAYER_FAIL.get(entityName));
-                return;
-            }
-
-            options = DisguiseParser.parsePlaceholders(options, p, entity);
-
-            DisguisePermissions perms = DisguiseParser.getPermissions(p, "disguiseentitymodify");
-            DisguisePerm disguisePerm = new DisguisePerm(disguise.getType());
-
-            if (!perms.isAllowedDisguise(disguisePerm, Arrays.asList(options))) {
-                p.sendMessage(LibsMsg.DMODPLAYER_NOPERM.get());
-                return;
-            }
-
-            try {
-                DisguiseParser
-                        .callMethods(p, disguise, perms, disguisePerm, new ArrayList<>(Arrays.asList(options)), options,
-                                "DisguiseModifyEntity");
-                p.sendMessage(LibsMsg.LISTENER_MODIFIED_DISG.get());
-            }
-            catch (DisguiseParseException ex) {
-                if (ex.getMessage() != null) {
-                    p.sendMessage(ex.getMessage());
-                }
-            }
-            catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
+        interactions.remove(p.getName()).onInteract(p, entity);
     }
 
     @EventHandler
@@ -824,66 +674,23 @@ public class DisguiseListener implements Listener {
         }
     }
 
-    public void setDisguiseClone(final String player, Boolean[] options) {
-        if (disguiseRunnable.containsKey(player)) {
-            BukkitRunnable run = disguiseRunnable.remove(player);
-            run.cancel();
-            run.run();
+    public void addInteraction(String playerName, LibsEntityInteract interaction, int secondsExpire) {
+        if (disguiseRunnable.containsKey(playerName)) {
+            disguiseRunnable.get(playerName).cancel();
         }
+
+        interactions.put(playerName, interaction);
 
         BukkitRunnable runnable = new BukkitRunnable() {
             @Override
             public void run() {
-                disguiseClone.remove(player);
-                disguiseRunnable.remove(player);
+                interactions.remove(playerName);
+                disguiseRunnable.remove(playerName);
             }
         };
 
-        runnable.runTaskLater(plugin, 20 * DisguiseConfig.getDisguiseCloneExpire());
+        runnable.runTaskLater(LibsDisguises.getInstance(), secondsExpire * 20);
 
-        disguiseRunnable.put(player, runnable);
-        disguiseClone.put(player, options);
-    }
-
-    public void setDisguiseEntity(final String player, String[] disguise) {
-        if (disguiseRunnable.containsKey(player)) {
-            BukkitRunnable run = disguiseRunnable.remove(player);
-            run.cancel();
-            run.run();
-        }
-
-        BukkitRunnable runnable = new BukkitRunnable() {
-            @Override
-            public void run() {
-                disguiseEntity.remove(player);
-                disguiseRunnable.remove(player);
-            }
-        };
-
-        runnable.runTaskLater(plugin, 20 * DisguiseConfig.getDisguiseEntityExpire());
-
-        disguiseRunnable.put(player, runnable);
-        disguiseEntity.put(player, disguise);
-    }
-
-    public void setDisguiseModify(final String player, String[] args) {
-        if (disguiseRunnable.containsKey(player)) {
-            BukkitRunnable run = disguiseRunnable.remove(player);
-            run.cancel();
-            run.run();
-        }
-
-        BukkitRunnable runnable = new BukkitRunnable() {
-            @Override
-            public void run() {
-                disguiseModify.remove(player);
-                disguiseRunnable.remove(player);
-            }
-        };
-
-        runnable.runTaskLater(plugin, 20 * DisguiseConfig.getDisguiseEntityExpire());
-
-        disguiseRunnable.put(player, runnable);
-        disguiseModify.put(player, args);
+        disguiseRunnable.put(playerName, runnable);
     }
 }

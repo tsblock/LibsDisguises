@@ -9,8 +9,10 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class UpdateChecker {
@@ -19,6 +21,7 @@ public class UpdateChecker {
     private String latestVersion;
     @Getter
     private int latestSnapshot;
+    private final long started = System.currentTimeMillis();
 
     public UpdateChecker(String resourceID) {
         this.resourceID = resourceID;
@@ -62,7 +65,6 @@ public class UpdateChecker {
         latestVersion = version;
     }
 
-
     /**
      * Asks spigot for the version
      */
@@ -76,8 +78,8 @@ public class UpdateChecker {
             // Get the input stream, what we receive
             try (InputStream input = con.getInputStream()) {
                 // Read it to string
-                String version = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))
-                        .lines().collect(Collectors.joining("\n"));
+                String version = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8)).lines()
+                        .collect(Collectors.joining("\n"));
 
                 // If the version is not empty, return it
                 if (!version.isEmpty()) {
@@ -93,9 +95,33 @@ public class UpdateChecker {
     }
 
     private boolean isNewerVersion(String currentVersion, String newVersion) {
+        currentVersion = currentVersion.replaceAll("(v)|(-SNAPSHOT)", "");
+        newVersion = newVersion.replaceAll("(v)|(-SNAPSHOT)", "");
+
+        // If the server has been online for less than 6 hours and both versions are 1.1.1 kind of versions
+        if (started + TimeUnit.HOURS.toMillis(6) > System.currentTimeMillis() &&
+                currentVersion.matches("[0-9]+(\\.[0-9]+)*") && newVersion.matches("[0-9]+(\\.[0-9]+)*")) {
+
+            int cVersion = Integer.parseInt(currentVersion.replace(".", ""));
+            int nVersion = Integer.parseInt(newVersion.replace(".", ""));
+
+            // If the current version is a higher version, and is only a higher version by 3 minor numbers
+            // Then we have a cache problem
+            if (cVersion > nVersion && nVersion + 3 > cVersion) {
+                return false;
+            }
+        }
+
+        // Lets just ignore all this fancy logic, and say that if you're not on the current release, you're outdated!
+        return !currentVersion.equals(newVersion);
+
+        /*
         // Remove 'v' and '-SNAPSHOT' from string, split by decimal points
         String[] cSplit = currentVersion.replaceAll("(v)|(-SNAPSHOT)", "").split("\\.");
         String[] nSplit = newVersion.replaceAll("(v)|(-SNAPSHOT)", "").split("\\.");
+
+        // Lets just ignore all this fancy logic, and say that if you're not on the current release, you're outdated!
+        return !Arrays.equals(cSplit, nSplit);
 
         // Iterate over the versions from left to right
         for (int i = 0; i < Math.max(cSplit.length, nSplit.length); i++) {
@@ -134,7 +160,7 @@ public class UpdateChecker {
         }
 
         // Both versions should be the same, return false as it's not a newer version
-        return false;
+        return false;*/
     }
 
     /**
@@ -151,8 +177,8 @@ public class UpdateChecker {
             // Get the input stream, what we receive
             try (InputStream input = con.getInputStream()) {
                 // Read it to string
-                String json = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))
-                        .lines().collect(Collectors.joining("\n"));
+                String json = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8)).lines()
+                        .collect(Collectors.joining("\n"));
 
                 jsonObject = new Gson().fromJson(json, Map.class);
             }

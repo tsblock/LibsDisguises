@@ -14,15 +14,20 @@ import me.libraryaddict.disguise.utilities.reflection.NmsVersion;
 import me.libraryaddict.disguise.utilities.translations.LibsMsg;
 import me.libraryaddict.disguise.utilities.translations.TranslateType;
 import org.bukkit.Bukkit;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.permissions.Permission;
+import org.bukkit.permissions.PermissionDefault;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -208,7 +213,37 @@ public class DisguiseConfig {
     private static boolean retaliationCombat;
     @Getter
     @Setter
-    private static boolean notifyPlayerDisguised;
+    private static NotifyBar notifyBar = NotifyBar.ACTION_BAR;
+    @Getter
+    @Setter
+    private static BarStyle bossBarStyle = BarStyle.SOLID;
+    @Getter
+    @Setter
+    private static BarColor bossBarColor = BarColor.GREEN;
+    private static PermissionDefault commandVisibility = PermissionDefault.TRUE;
+    @Getter
+    @Setter
+    private static boolean scoreboardDisguiseNames;
+
+    public static PermissionDefault getCommandVisibility() {
+        return commandVisibility;
+    }
+
+    public static void setCommandVisibility(PermissionDefault permissionDefault) {
+        if (permissionDefault == null || getCommandVisibility() == permissionDefault) {
+            return;
+        }
+
+        commandVisibility = permissionDefault;
+
+        for (Permission perm : LibsDisguises.getInstance().getDescription().getPermissions()) {
+            if (!perm.getName().startsWith("libsdisguises.seecmd")) {
+                continue;
+            }
+
+            perm.setDefault(getCommandVisibility());
+        }
+    }
 
     private DisguiseConfig() {
     }
@@ -222,6 +257,12 @@ public class DisguiseConfig {
     }
 
     public static Entry<DisguisePerm, Disguise> getCustomDisguise(String disguise) {
+        if (!Bukkit.isPrimaryThread()) {
+            DisguiseUtilities.getLogger().warning(
+                    "Custom Disguises should not be called async! This operation will become impossible in the " +
+                            "future!");
+        }
+
         Entry<DisguisePerm, String> entry = getRawCustomDisguise(disguise);
 
         if (entry == null) {
@@ -241,6 +282,12 @@ public class DisguiseConfig {
 
     public static Entry<DisguisePerm, Disguise> getCustomDisguise(Entity target,
             String disguise) throws IllegalAccessException, DisguiseParseException, InvocationTargetException {
+        if (!Bukkit.isPrimaryThread()) {
+            DisguiseUtilities.getLogger().warning(
+                    "Custom Disguises should not be called async! This operation will become impossible in the " +
+                            "future!");
+        }
+
         Entry<DisguisePerm, String> entry = getRawCustomDisguise(disguise);
 
         if (entry == null) {
@@ -253,6 +300,12 @@ public class DisguiseConfig {
 
     public static Entry<DisguisePerm, Disguise> getCustomDisguise(CommandSender invoker, Entity target,
             String disguise) throws IllegalAccessException, DisguiseParseException, InvocationTargetException {
+        if (!Bukkit.isPrimaryThread()) {
+            DisguiseUtilities.getLogger().warning(
+                    "Custom Disguises should not be called async! This operation will become impossible in the " +
+                            "future!");
+        }
+
         Entry<DisguisePerm, String> entry = getRawCustomDisguise(disguise);
 
         if (entry == null) {
@@ -344,7 +397,8 @@ public class DisguiseConfig {
         setEntityStatusPacketsEnabled(config.getBoolean("PacketsEnabled.EntityStatus"));
         setEquipmentPacketsEnabled(config.getBoolean("PacketsEnabled.Equipment"));
         setExplicitDisguisePermissions(config.getBoolean("Permissions.ExplicitDisguises"));
-        setExtendedDisguiseNames(config.getBoolean("ExtendedNames"));
+        // The default value shall be false if you don't update config
+        setExtendedDisguiseNames(config.contains("ScoreboardNames") && config.getBoolean("ExtendedNames"));
         setHideArmorFromSelf(config.getBoolean("RemoveArmor"));
         setHideDisguisedPlayers(config.getBoolean("HideDisguisedPlayersFromTab"));
         setHideHeldItemFromSelf(config.getBoolean("RemoveHeldItem"));
@@ -361,8 +415,7 @@ public class DisguiseConfig {
         setMovementPacketsEnabled(config.getBoolean("PacketsEnabled.Movement"));
         setNameAboveHeadAlwaysVisible(config.getBoolean("NameAboveHeadAlwaysVisible"));
         setNameOfPlayerShownAboveDisguise(config.getBoolean("ShowNamesAboveDisguises"));
-        setNotifyPlayerDisguised(config.getBoolean("NotifyPlayerDisguised"));
-        setPlayerDisguisesTablistExpires(config.getInt("PlayerDisguisesTablistExpires"));
+        setPlayerDisguisesTablistExpires(config.getInt("PlayerDisguisesTablistExpiry"));
         setPlayerHideArmor(config.getBoolean("PlayerHideArmor"));
         setRetaliationCombat(config.getBoolean("RetaliationCombat"));
         setSaveEntityDisguises(config.getBoolean("SaveDisguises.Entities"));
@@ -383,9 +436,42 @@ public class DisguiseConfig {
         setWarnScoreboardConflict(config.getBoolean("Scoreboard.WarnConflict"));
         setWitherSkullPacketsEnabled(config.getBoolean("PacketsEnabled.WitherSkull"));
         setWolfDyeable(config.getBoolean("DyeableWolf"));
+        setScoreboardDisguiseNames(config.getBoolean("ScoreboardNames"));
 
         if (!LibsPremium.isPremium() && (isSavePlayerDisguises() || isSaveEntityDisguises())) {
             DisguiseUtilities.getLogger().warning("You must purchase the plugin to use saved disguises!");
+        }
+
+        try {
+            setNotifyBar(NotifyBar.valueOf(config.getString("NotifyBar").toUpperCase()));
+
+            if (getNotifyBar() == NotifyBar.BOSS_BAR) {
+                DisguiseUtilities.getLogger().warning(
+                        "BossBars hasn't been implemented properly in 1.12 due to api restrictions, falling back to " +
+                                "ACTION_BAR");
+
+                setNotifyBar(NotifyBar.ACTION_BAR);
+            }
+        }
+        catch (Exception ex) {
+            DisguiseUtilities.getLogger()
+                    .warning("Cannot parse '" + config.getString("NotifyBar") + "' to a valid option for NotifyBar");
+        }
+
+        try {
+            setBossBarColor(BarColor.valueOf(config.getString("BossBarColor").toUpperCase()));
+        }
+        catch (Exception ex) {
+            DisguiseUtilities.getLogger().warning(
+                    "Cannot parse '" + config.getString("BossBarColor") + "' to a valid option for BossBarColor");
+        }
+
+        try {
+            setBossBarStyle(BarStyle.valueOf(config.getString("BossBarStyle").toUpperCase()));
+        }
+        catch (Exception ex) {
+            DisguiseUtilities.getLogger().warning(
+                    "Cannot parse '" + config.getString("BossBarStyle") + "' to a valid option for BossBarStyle");
         }
 
         try {
@@ -410,6 +496,15 @@ public class DisguiseConfig {
                     "' to a valid option for SelfDisguisesScoreboard");
         }
 
+        PermissionDefault commandVisibility = PermissionDefault.getByName(config.getString("Permissions.SeeCommands"));
+
+        if (commandVisibility == null) {
+            DisguiseUtilities.getLogger().warning("Invalid option '" + config.getString("Permissions.SeeCommands") +
+                    "' for Permissions.SeeCommands when loading config!");
+        } else {
+            setCommandVisibility(commandVisibility);
+        }
+
         loadCustomDisguises();
 
         // Another wee trap for the non-legit
@@ -429,20 +524,93 @@ public class DisguiseConfig {
             }
         }
 
-        int missingConfigs = 0;
+        boolean verbose;
 
-        for (String key : config.getDefaultSection().getKeys(true)) {
-            if (config.contains(key, true)) {
+        if (config.contains("VerboseConfig")) {
+            verbose = config.getBoolean("VerboseConfig");
+        } else {
+            DisguiseUtilities.getLogger()
+                    .info("As 'VerboseConfig' hasn't been set, it is assumed true. Set it in your config to remove " +
+                            "these messages!");
+            verbose = true;
+        }
+
+        boolean changed = config.getBoolean("ChangedConfig");
+
+        if (!verbose) {
+            int missingConfigs = 0;
+
+            for (String key : config.getDefaultSection().getKeys(true)) {
+                if (config.contains(key, true)) {
+                    continue;
+                }
+
+                missingConfigs++;
+            }
+
+            if (missingConfigs > 0) {
+                DisguiseUtilities.getLogger().warning("Your config is missing " + missingConfigs +
+                        " options! Please consider regenerating your config!");
+            }
+        }
+
+        if (verbose || changed) {
+            ArrayList<String> returns = doOutput(config, changed, verbose);
+
+            if (!returns.isEmpty()) {
+                DisguiseUtilities.getLogger()
+                        .info("This is not an error! Now outputting " + (verbose ? "missing " : "") +
+                                (changed ? (verbose ? "and " : "") + "changed/invalid " : "") + "config values");
+
+                for (String v : returns) {
+                    DisguiseUtilities.getLogger().info(v);
+                }
+            }
+        }
+    }
+
+    public static ArrayList<String> doOutput(ConfigurationSection config, boolean informChangedUnknown,
+            boolean informMissing) {
+        HashMap<String, Object> configs = new HashMap<>();
+        ConfigurationSection defaultSection = config.getDefaultSection();
+        ArrayList<String> returns = new ArrayList<>();
+
+        for (String key : defaultSection.getKeys(true)) {
+            if (defaultSection.isConfigurationSection(key)) {
                 continue;
             }
 
-            missingConfigs++;
+            configs.put(key, defaultSection.get(key));
         }
 
-        if (missingConfigs > 0) {
-            DisguiseUtilities.getLogger().warning(
-                    "Your config is missing " + missingConfigs + " options! Please consider regenerating your config!");
+        for (String key : config.getKeys(true)) {
+            if (config.isConfigurationSection(key)) {
+                continue;
+            }
+
+            if (!configs.containsKey(key)) {
+                if (informChangedUnknown) {
+                    returns.add("Unknown config option '" + key + ": " + config.get(key) + "'");
+                }
+                continue;
+            }
+
+            if (!configs.get(key).equals(config.get(key))) {
+                if (informChangedUnknown) {
+                    returns.add("Modified config: '" + key + ": " + config.get(key) + "'");
+                }
+            }
+
+            configs.remove(key);
         }
+
+        if (informMissing) {
+            for (Entry<String, Object> entry : configs.entrySet()) {
+                returns.add("Missing '" + entry.getKey() + ": " + entry.getValue() + "'");
+            }
+        }
+
+        return returns;
     }
 
     static void loadCustomDisguises() {
@@ -488,7 +656,7 @@ public class DisguiseConfig {
         }
 
         if (failedCustomDisguises > 0) {
-            DisguiseUtilities.getLogger().severe("Failed to load " + failedCustomDisguises + " custom disguises");
+            DisguiseUtilities.getLogger().warning("Failed to load " + failedCustomDisguises + " custom disguises");
         }
 
         DisguiseUtilities.getLogger().info("Loaded " + customDisguises.size() + " custom disguise" +
@@ -496,6 +664,12 @@ public class DisguiseConfig {
     }
 
     public static void addCustomDisguise(String disguiseName, String toParse) throws DisguiseParseException {
+        if (!Bukkit.isPrimaryThread()) {
+            DisguiseUtilities.getLogger().warning(
+                    "Custom Disguises should not be called async! This operation will become impossible in the " +
+                            "future!");
+        }
+
         if (getRawCustomDisguise(toParse) != null) {
             throw new DisguiseParseException(LibsMsg.CUSTOM_DISGUISE_NAME_CONFLICT, disguiseName);
         }
@@ -617,5 +791,13 @@ public class DisguiseConfig {
         SAME_BUILDS,
         SNAPSHOTS,
         RELEASES
+    }
+
+    public enum NotifyBar {
+        NONE,
+
+        BOSS_BAR,
+
+        ACTION_BAR
     }
 }
