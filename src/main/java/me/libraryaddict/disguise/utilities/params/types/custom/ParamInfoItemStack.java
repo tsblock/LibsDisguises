@@ -15,6 +15,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Locale;
 
 /**
  * Created by libraryaddict on 7/09/2018.
@@ -24,7 +25,10 @@ public class ParamInfoItemStack extends ParamInfoEnum {
             Enum[] possibleValues) {
         super(paramClass, name, valueType, description, possibleValues);
 
-        setOtherValues("null", "glow");
+        if (this instanceof ParamInfoItemBlock)
+            return;
+
+        setOtherValues("null", "%held-item%", "%offhand-item%", "%helmet%", "%chestplate%", "%leggings%", "%boots%");
     }
 
     @Override
@@ -97,7 +101,9 @@ public class ParamInfoItemStack extends ParamInfoEnum {
     }
 
     protected static ItemStack parseToItemstack(String string) {
-        if (string.startsWith("{") && string.endsWith("}")) {
+        if (string.isEmpty()) {
+            return null;
+        } else if (string.startsWith("{") && string.endsWith("}")) {
             try {
                 return DisguiseUtilities.getGson().fromJson(string, ItemStack.class);
             }
@@ -108,11 +114,11 @@ public class ParamInfoItemStack extends ParamInfoEnum {
             String[] split;
 
             // If it matches /give @p stone {data}
-            if (string.matches("[^{]+?[ -]\\{.+?}")) {
+            if (string.matches("^[^{]+?[ -]\\{[.].+?}$")) {
                 split = string.substring(0, string.indexOf("{") - 1).split("[ -]");
                 split = Arrays.copyOf(split, split.length + 1);
                 split[split.length - 1] = string.substring(string.indexOf("{"));
-            } else if (string.matches("[^{ ]+?\\{.+?}( [0-9]+)?")) { // /give @p stone[data] <amount?>
+            } else if (string.matches("^[^{ -]+?\\{.+?}([ -][0-9]+)?$")) { // /give @p stone[data] <amount?>
                 split = new String[string.endsWith("}") ? 2 : 3];
                 split[0] = string.substring(0, string.indexOf("{"));
                 split[string.endsWith("}") ? 1 : 2] = string
@@ -125,10 +131,10 @@ public class ParamInfoItemStack extends ParamInfoEnum {
                 split = string.split("[ -]");
             }
 
-            Material material = ReflectionManager.getMaterial(split[0].toLowerCase());
+            Material material = ReflectionManager.getMaterial(split[0].toLowerCase(Locale.ENGLISH));
 
             if (material == null) {
-                material = Material.getMaterial(split[0].toUpperCase());
+                material = Material.getMaterial(split[0].toUpperCase(Locale.ENGLISH));
             }
 
             if (material == null || (material == Material.AIR && !split[0].equalsIgnoreCase("air"))) {
@@ -159,7 +165,7 @@ public class ParamInfoItemStack extends ParamInfoEnum {
             return null;
         }
 
-        Material material = Material.getMaterial(split[0].toUpperCase());
+        Material material = Material.getMaterial(split[0].toUpperCase(Locale.ENGLISH));
 
         if (material == null || (material == Material.AIR && !split[0].equalsIgnoreCase("air"))) {
             throw new IllegalArgumentException();

@@ -47,14 +47,14 @@ public class DisguiseModifyRadiusCommand extends DisguiseBaseCommand implements 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (sender.getName().equals("CONSOLE")) {
-            sender.sendMessage(LibsMsg.NO_CONSOLE.get());
+            LibsMsg.NO_CONSOLE.send(sender);
             return true;
         }
 
         DisguisePermissions permissions = getPermissions(sender);
 
         if (!permissions.hasPermissions()) {
-            sender.sendMessage(LibsMsg.NO_PERM.get());
+            LibsMsg.NO_PERM.send(sender);
             return true;
         }
 
@@ -77,8 +77,8 @@ public class DisguiseModifyRadiusCommand extends DisguiseBaseCommand implements 
 
             Collections.sort(classes);
 
-            sender.sendMessage(LibsMsg.DMODRADIUS_USABLE
-                    .get(ChatColor.GREEN + StringUtils.join(classes, ChatColor.DARK_GREEN + ", " + ChatColor.GREEN)));
+            LibsMsg.DMODRADIUS_USABLE.send(sender,
+                    ChatColor.GREEN + StringUtils.join(classes, ChatColor.DARK_GREEN + ", " + ChatColor.GREEN));
             return true;
         }
 
@@ -99,29 +99,33 @@ public class DisguiseModifyRadiusCommand extends DisguiseBaseCommand implements 
             }
 
             if (baseType == null) {
-                sender.sendMessage(LibsMsg.DMODRADIUS_UNRECOGNIZED.get(args[0]));
+                LibsMsg.DMODRADIUS_UNRECOGNIZED.send(sender, args[0]);
                 return true;
             }
         }
 
         if (args.length == starting + 1) {
-            sender.sendMessage(
-                    (starting == 0 ? LibsMsg.DMODRADIUS_NEEDOPTIONS : LibsMsg.DMODRADIUS_NEEDOPTIONS_ENTITY).get());
+            if (starting == 0) {
+                LibsMsg.DMODRADIUS_NEEDOPTIONS.send(sender);
+            } else {
+                LibsMsg.DMODRADIUS_NEEDOPTIONS_ENTITY.send(sender);
+            }
+
             return true;
         } else if (args.length < 2) {
-            sender.sendMessage(LibsMsg.DMODRADIUS_NEEDOPTIONS.get());
+            LibsMsg.DMODRADIUS_NEEDOPTIONS.send(sender);
             return true;
         }
 
         if (!isInteger(args[starting])) {
-            sender.sendMessage(LibsMsg.NOT_NUMBER.get(args[starting]));
+            LibsMsg.NOT_NUMBER.send(sender, args[starting]);
             return true;
         }
 
         int radius = Integer.parseInt(args[starting]);
 
         if (radius > maxRadius) {
-            sender.sendMessage(LibsMsg.LIMITED_RADIUS.get(maxRadius));
+            LibsMsg.LIMITED_RADIUS.send(sender, maxRadius);
             radius = maxRadius;
         }
 
@@ -176,7 +180,7 @@ public class DisguiseModifyRadiusCommand extends DisguiseBaseCommand implements 
             }
             catch (DisguiseParseException ex) {
                 if (ex.getMessage() != null) {
-                    sender.sendMessage(ex.getMessage());
+                    DisguiseUtilities.sendMessage(sender, ex.getMessage());
                 }
 
                 return true;
@@ -188,13 +192,13 @@ public class DisguiseModifyRadiusCommand extends DisguiseBaseCommand implements 
         }
 
         if (noPermission > 0) {
-            sender.sendMessage(LibsMsg.DMODRADIUS_NOPERM.get(noPermission));
+            LibsMsg.DMODRADIUS_NOPERM.send(sender, noPermission);
         }
 
         if (modifiedDisguises > 0) {
-            sender.sendMessage(LibsMsg.DMODRADIUS.get(modifiedDisguises));
+            LibsMsg.DMODRADIUS.send(sender, modifiedDisguises);
         } else {
-            sender.sendMessage(LibsMsg.DMODRADIUS_NOENTS.get());
+            LibsMsg.DMODRADIUS_NOENTS.send(sender);
         }
 
         return true;
@@ -245,7 +249,7 @@ public class DisguiseModifyRadiusCommand extends DisguiseBaseCommand implements 
         int radius = Integer.parseInt(args[starting]);
 
         if (radius > maxRadius) {
-            sender.sendMessage(LibsMsg.LIMITED_RADIUS.get(maxRadius));
+            LibsMsg.LIMITED_RADIUS.send(sender, maxRadius);
             radius = maxRadius;
         }
 
@@ -287,11 +291,10 @@ public class DisguiseModifyRadiusCommand extends DisguiseBaseCommand implements 
     protected void sendCommandUsage(CommandSender sender, DisguisePermissions permissions) {
         ArrayList<String> allowedDisguises = getAllowedDisguises(permissions);
 
-        sender.sendMessage(LibsMsg.DMODRADIUS_HELP1.get(maxRadius));
-        sender.sendMessage(LibsMsg.DMODIFY_HELP3
-                .get(ChatColor.GREEN + StringUtils.join(allowedDisguises, ChatColor.RED + ", " + ChatColor.GREEN)));
+        LibsMsg.DMODRADIUS_HELP1.send(sender, maxRadius);
+        LibsMsg.DMODIFY_HELP3.send(sender, StringUtils.join(allowedDisguises, LibsMsg.CAN_USE_DISGS_SEPERATOR.get()));
 
-        sender.sendMessage(LibsMsg.DMODRADIUS_HELP2.get());
-        sender.sendMessage(LibsMsg.DMODRADIUS_HELP3.get());
+        LibsMsg.DMODRADIUS_HELP2.send(sender);
+        LibsMsg.DMODRADIUS_HELP3.send(sender);
     }
 }

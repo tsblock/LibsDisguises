@@ -4,6 +4,7 @@ import me.libraryaddict.disguise.LibsDisguises;
 import me.libraryaddict.disguise.disguisetypes.DisguiseType;
 import me.libraryaddict.disguise.disguisetypes.FlagWatcher;
 import me.libraryaddict.disguise.utilities.params.ParamInfoManager;
+import me.libraryaddict.disguise.utilities.reflection.NmsRemovedIn;
 import me.libraryaddict.disguise.utilities.reflection.ReflectionManager;
 import me.libraryaddict.disguise.utilities.reflection.asm.WatcherInfo;
 
@@ -14,6 +15,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,9 +49,12 @@ public class DisguiseMethods {
     }
 
     public DisguiseMethods() {
+        loadMethods();
+    }
+
+    private void loadMethods() {
         try (InputStream stream = LibsDisguises.getInstance().getResource("ANTI_PIRACY_ENCRYPTION")) {
-            List<String> lines = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).lines()
-                    .collect(Collectors.toList());
+            String[] lines = new String(ReflectionManager.readFully(stream), StandardCharsets.UTF_8).split("\n");
 
             HashMap<String, Class<? extends FlagWatcher>> classes = new HashMap<>();
             classes.put(FlagWatcher.class.getSimpleName(), FlagWatcher.class);
@@ -63,6 +68,11 @@ public class DisguiseMethods {
 
                 while (!classes.containsKey(c.getSimpleName())) {
                     classes.put(c.getSimpleName(), c);
+
+                    if (c == FlagWatcher.class) {
+                        break;
+                    }
+
                     c = ReflectionManager.getSuperClass(c);
                 }
             }
@@ -95,7 +105,8 @@ public class DisguiseMethods {
                     continue;
                 } else if (method.getName().startsWith("get")) {
                     continue;
-                } else if (method.isAnnotationPresent(Deprecated.class)) {
+                } else if (method.isAnnotationPresent(Deprecated.class) &&
+                        !method.isAnnotationPresent(NmsRemovedIn.class)) {
                     continue;
                 } else if (!method.getReturnType().equals(Void.TYPE)) {
                     continue;
@@ -105,8 +116,7 @@ public class DisguiseMethods {
 
                 watcherMethods.computeIfAbsent(watcher, (a) -> new ArrayList<>()).add(method);
             }
-        }
-        catch (IOException | ClassNotFoundException | NoClassDefFoundError | NoSuchMethodException e) {
+        } catch (IOException | ClassNotFoundException | NoClassDefFoundError | NoSuchMethodException e) {
             e.printStackTrace();
         }
     }

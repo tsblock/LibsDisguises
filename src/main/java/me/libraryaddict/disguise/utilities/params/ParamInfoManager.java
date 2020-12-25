@@ -10,9 +10,11 @@ import me.libraryaddict.disguise.disguisetypes.watchers.FallingBlockWatcher;
 import me.libraryaddict.disguise.disguisetypes.watchers.LivingWatcher;
 import me.libraryaddict.disguise.disguisetypes.watchers.PlayerWatcher;
 import me.libraryaddict.disguise.utilities.params.types.custom.ParamInfoItemBlock;
+import me.libraryaddict.disguise.utilities.params.types.custom.ParamInfoSoundGroup;
 import me.libraryaddict.disguise.utilities.parser.DisguisePerm;
 import me.libraryaddict.disguise.utilities.watchers.DisguiseMethods;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.inventory.ItemStack;
@@ -21,12 +23,15 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class ParamInfoManager {
     private static List<ParamInfo> paramList;
     private static DisguiseMethods disguiseMethods;
     @Getter
     private static ParamInfoItemBlock paramInfoItemBlock;
+    @Getter
+    private static ParamInfoSoundGroup paramInfoSoundGroup;
 
     public static List<ParamInfo> getParamInfos() {
         return paramList;
@@ -47,8 +52,12 @@ public class ParamInfoManager {
     }
 
     public static ParamInfo getParamInfo(Method method) {
+        if (method.getName().equals("setSoundGroup")) {
+            return getParamInfoSoundGroup();
+        }
+
         if (method.getDeclaringClass() == FallingBlockWatcher.class &&
-                method.getParameterTypes()[0] == ItemStack.class) {
+                (method.getParameterTypes()[0] == Material.class || method.getParameterTypes()[0] == ItemStack.class)) {
             return getParamInfoItemBlock();
         }
 
@@ -73,8 +82,9 @@ public class ParamInfoManager {
 
     public static ParamInfo getParamInfo(DisguiseType disguiseType, String methodName) {
         for (Method method : getDisguiseWatcherMethods(disguiseType.getWatcherClass())) {
-            if (!method.getName().toLowerCase().equals(methodName.toLowerCase()))
+            if (!method.getName().toLowerCase(Locale.ENGLISH).equals(methodName.toLowerCase(Locale.ENGLISH))) {
                 continue;
+            }
 
             return getParamInfo(method);
         }
@@ -86,12 +96,17 @@ public class ParamInfoManager {
         ParamInfoTypes infoTypes = new ParamInfoTypes();
         paramList = infoTypes.getParamInfos();
         paramInfoItemBlock = infoTypes.getParamInfoBlock();
+        paramInfoSoundGroup =
+                (ParamInfoSoundGroup) paramList.stream().filter(p -> p instanceof ParamInfoSoundGroup).findAny()
+                        .orElse(null);
         disguiseMethods = new DisguiseMethods();
 
         //paramList.sort((o1, o2) -> String.CASE_INSENSITIVE_ORDER.compare(o1.getName(), o2.getName()));
     }
 
-    public static Method[] getDisguiseWatcherMethods(@Nullable Class<? extends FlagWatcher> watcherClass) {
+    public static Method[] getDisguiseWatcherMethods(
+            @Nullable
+                    Class<? extends FlagWatcher> watcherClass) {
         if (watcherClass == null) {
             return new Method[0];
         }
@@ -114,9 +129,11 @@ public class ParamInfoManager {
         // Add these last as it's what we want to present to be called the least
         for (String methodName : new String[]{"setSelfDisguiseVisible", "setHideHeldItemFromSelf",
                 "setHideArmorFromSelf", "setHearSelfDisguise", "setHidePlayer", "setExpires", "setNotifyBar",
-                "setBossBarColor", "setBossBarStyle"}) {
+                "setBossBarColor", "setBossBarStyle", "setTallDisguisesVisible", "setDynamicName", "setSoundGroup",
+                "setDisguiseName", "setDeadmau5Ears"}) {
             try {
                 Class cl = boolean.class;
+                Class disguiseClass = Disguise.class;
 
                 switch (methodName) {
                     case "setExpires":
@@ -131,25 +148,24 @@ public class ParamInfoManager {
                     case "setBossBarStyle":
                         cl = BarStyle.class;
                         break;
+                    case "setSoundGroup":
+                    case "setDisguiseName":
+                        cl = String.class;
+                        break;
+                    case "setDeadmau5Ears":
+                        if (watcherClass != PlayerWatcher.class) {
+                            continue;
+                        }
+
+                        disguiseClass = PlayerDisguise.class;
+                        break;
                     default:
                         break;
                 }
 
-                methods.add(Disguise.class.getMethod(methodName, cl));
-            }
-            catch (Exception ex) {
+                methods.add(disguiseClass.getMethod(methodName, cl));
+            } catch (Exception ex) {
                 ex.printStackTrace();
-            }
-        }
-
-        if (watcherClass == PlayerWatcher.class) {
-            try {
-                methods.add(PlayerDisguise.class.getMethod("setNameVisible", boolean.class));
-                methods.add(PlayerDisguise.class.getMethod("setDynamicName", boolean.class));
-                methods.add(PlayerDisguise.class.getMethod("setName", String.class));
-            }
-            catch (NoSuchMethodException e) {
-                e.printStackTrace();
             }
         }
 

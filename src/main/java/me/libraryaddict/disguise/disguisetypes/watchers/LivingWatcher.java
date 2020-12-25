@@ -40,12 +40,12 @@ public class LivingWatcher extends FlagWatcher {
         return clone;
     }
 
-    @NmsAddedIn(val = NmsVersion.v1_14)
+    @NmsAddedIn(NmsVersion.v1_14)
     public BlockPosition getBedPosition() {
         return getData(MetaIndex.LIVING_BED_POSITION).orElse(null);
     }
 
-    @NmsAddedIn(val = NmsVersion.v1_14)
+    @NmsAddedIn(NmsVersion.v1_14)
     public void setBedPosition(BlockPosition blockPosition) {
         Optional<BlockPosition> optional;
 
@@ -66,6 +66,52 @@ public class LivingWatcher extends FlagWatcher {
     public void setHealth(float health) {
         setData(MetaIndex.LIVING_HEALTH, health);
         sendData(MetaIndex.LIVING_HEALTH);
+    }
+
+    /*@NmsAddedIn(val = NmsVersion.v1_13)
+    public MainHand getMainHand() {
+        return getHandFlag(0) ? MainHand.RIGHT : MainHand.LEFT;
+    }
+
+    @NmsAddedIn(val = NmsVersion.v1_13)
+    public void setMainHand(MainHand hand) {
+        setHandFlag(0, hand == MainHand.RIGHT);
+    }*/
+
+    private boolean getHandFlag(int byteValue) {
+        return (getData(MetaIndex.LIVING_HAND) & 1 << byteValue) != 0;
+    }
+
+    private void setHandFlag(int byteValue, boolean flag) {
+        byte b0 = getData(MetaIndex.LIVING_HAND);
+
+        if (flag) {
+            setData(MetaIndex.LIVING_HAND, (byte) (b0 | 1 << byteValue));
+        } else {
+            setData(MetaIndex.LIVING_HAND, (byte) (b0 & ~(1 << byteValue)));
+        }
+
+        sendData(MetaIndex.LIVING_HAND);
+    }
+
+    @NmsAddedIn(NmsVersion.v1_13)
+    public boolean isRightClicking() {
+        return getHandFlag(0);
+    }
+
+    @NmsAddedIn(NmsVersion.v1_13)
+    public void setRightClicking(boolean setRightClicking) {
+        setHandFlag(0, setRightClicking);
+    }
+
+    @NmsAddedIn(NmsVersion.v1_13)
+    public boolean isSpinning() {
+        return getHandFlag(2);
+    }
+
+    @NmsAddedIn(NmsVersion.v1_13)
+    public void setSpinning(boolean setSpinning) {
+        setHandFlag(2, setSpinning);
     }
 
     public double getMaxHealth() {

@@ -1,5 +1,8 @@
 package me.libraryaddict.disguise.commands;
 
+import com.comphenix.protocol.ProtocolLibrary;
+import me.libraryaddict.disguise.DisguiseConfig;
+import me.libraryaddict.disguise.LibsDisguises;
 import me.libraryaddict.disguise.commands.disguise.DisguiseCommand;
 import me.libraryaddict.disguise.commands.disguise.DisguiseEntityCommand;
 import me.libraryaddict.disguise.commands.disguise.DisguisePlayerCommand;
@@ -22,7 +25,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.scoreboard.Team;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -49,9 +52,18 @@ public abstract class DisguiseBaseCommand implements CommandExecutor {
     }
 
     protected boolean isNotPremium(CommandSender sender) {
+        String requiredProtocolLib = DisguiseUtilities.getProtocolLibRequiredVersion();
+        String version = ProtocolLibrary.getPlugin().getDescription().getVersion();
+
+        if (DisguiseUtilities.isOlderThan(requiredProtocolLib, version)) {
+            DisguiseUtilities.sendProtocolLibUpdateMessage(sender, version, requiredProtocolLib);
+        }
+
         if (sender instanceof Player && !sender.isOp() &&
                 (!LibsPremium.isPremium() || LibsPremium.getPaidInformation() == LibsPremium.getPluginInformation())) {
-            sender.sendMessage(ChatColor.RED + "Please purchase Lib's Disguises to enable player commands");
+            sender.sendMessage(ChatColor.RED +
+                    "This is the free version of Lib's Disguises, player commands are limited to console and " +
+                    "Operators only! Purchase the plugin for non-admin usage!");
             return true;
         }
 
@@ -193,12 +205,12 @@ public abstract class DisguiseBaseCommand implements CommandExecutor {
             return list;
 
         Iterator<String> itel = list.iterator();
-        String label = origArgs[origArgs.length - 1].toLowerCase();
+        String label = origArgs[origArgs.length - 1].toLowerCase(Locale.ENGLISH);
 
         while (itel.hasNext()) {
             String name = itel.next();
 
-            if (name.toLowerCase().startsWith(label))
+            if (name.toLowerCase(Locale.ENGLISH).startsWith(label))
                 continue;
 
             itel.remove();
@@ -208,17 +220,13 @@ public abstract class DisguiseBaseCommand implements CommandExecutor {
     }
 
     protected String getDisplayName(CommandSender player) {
-        Team team = ((Player) player).getScoreboard().getEntryTeam(player.getName());
+        String name = DisguiseConfig.getNameAboveDisguise().replace("%simple%", player.getName());
 
-        if (team == null) {
-            team = ((Player) player).getScoreboard().getEntryTeam(((Player) player).getUniqueId().toString());
-
-            if (team == null) {
-                return player.getName();
-            }
+        if (name.contains("%complex%")) {
+            name = name.replace("%complex%", DisguiseUtilities.getDisplayName(player));
         }
 
-        return team.getPrefix() + team.getColor() + player.getName() + team.getSuffix();
+        return ChatColor.translateAlternateColorCodes('&', name);
     }
 
     protected ArrayList<String> getAllowedDisguises(DisguisePermissions permissions) {

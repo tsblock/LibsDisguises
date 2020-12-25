@@ -6,7 +6,6 @@ import me.libraryaddict.disguise.LibsDisguises;
 import me.libraryaddict.disguise.utilities.DisguiseUtilities;
 import me.libraryaddict.disguise.utilities.LibsPremium;
 import me.libraryaddict.disguise.utilities.SkinUtils;
-import me.libraryaddict.disguise.utilities.reflection.NmsVersion;
 import me.libraryaddict.disguise.utilities.reflection.ReflectionManager;
 import me.libraryaddict.disguise.utilities.translations.LibsMsg;
 import net.md_5.bungee.api.chat.ClickEvent;
@@ -30,12 +29,12 @@ public class GrabSkinCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String s, String[] strings) {
         if (sender instanceof Player && !sender.isOp() &&
                 (!LibsPremium.isPremium() || LibsPremium.getPaidInformation() == LibsPremium.getPluginInformation())) {
-            sender.sendMessage(ChatColor.RED + "Please purchase Lib's Disguises to enable player commands");
+            sender.sendMessage(ChatColor.RED + "This is the free version of Lib's Disguises, player commands are limited to console and Operators only! Purchase the plugin for non-admin usage!");
             return true;
         }
 
         if (!sender.hasPermission("libsdisguises.grabskin")) {
-            sender.sendMessage(LibsMsg.NO_PERM.get());
+            LibsMsg.NO_PERM.send(sender);
             return true;
         }
 
@@ -45,7 +44,8 @@ public class GrabSkinCommand implements CommandExecutor {
         }
 
         String[] args = DisguiseUtilities.split(StringUtils.join(strings, " "));
-        String tName = args.length > 1 ? args[1] : null;
+        String tName = args.length > 1 ? args[0] : null;
+        String skin = args.length > 1 ? args[1] : args[0];
 
         String usable = SkinUtils.getUsableStatus();
 
@@ -54,8 +54,8 @@ public class GrabSkinCommand implements CommandExecutor {
             return true;
         }
 
-        if (tName == null && args[0].matches("(.*\\/)?[a-zA-Z0-9_-]{3,20}\\.png")) {
-            tName = args[0].substring(args[0].lastIndexOf("/") + 1, args[0].lastIndexOf("."));
+        if (tName == null && skin.matches("(.*\\/)?[a-zA-Z0-9_-]{3,20}\\.png")) {
+            tName = skin.substring(skin.lastIndexOf("/") + 1, skin.lastIndexOf("."));
 
             if (DisguiseUtilities.hasGameProfile(tName)) {
                 tName = null;
@@ -68,20 +68,20 @@ public class GrabSkinCommand implements CommandExecutor {
             private BukkitTask runnable = new BukkitRunnable() {
                 @Override
                 public void run() {
-                    sender.sendMessage(LibsMsg.PLEASE_WAIT.get());
+                    LibsMsg.PLEASE_WAIT.send(sender);
                 }
             }.runTaskTimer(LibsDisguises.getInstance(), 100, 100);
 
             @Override
             public void onError(LibsMsg msg, Object... args) {
-                sender.sendMessage(msg.get(args));
+                msg.send(sender, args);
 
                 runnable.cancel();
             }
 
             @Override
             public void onInfo(LibsMsg msg, Object... args) {
-                sender.sendMessage(msg.get(args));
+                msg.send(sender, args);
             }
 
             @Override
@@ -106,13 +106,13 @@ public class GrabSkinCommand implements CommandExecutor {
                 }
 
                 DisguiseAPI.addGameProfile(nName, profile);
-                sender.sendMessage(LibsMsg.GRABBED_SKIN.get(nName));
+                LibsMsg.GRABBED_SKIN.send(sender, nName);
 
                 String string = DisguiseUtilities.getGson().toJson(profile);
                 int start = 0;
                 int msg = 1;
 
-                if (NmsVersion.v1_13.isSupported()) {
+               //if (NmsVersion.v1_13.isSupported()) {
                     ComponentBuilder builder = new ComponentBuilder("").appendLegacy(LibsMsg.CLICK_TO_COPY.get());
 
                     while (start < string.length()) {
@@ -138,24 +138,25 @@ public class GrabSkinCommand implements CommandExecutor {
                     }
 
                     sender.spigot().sendMessage(builder.create());
-                } else {
-                    sender.sendMessage(LibsMsg.SKIN_DATA.get(string));
-                }
+                /*} else {
+                    LibsMsg.SKIN_DATA.send(sender, string);
+                }*/
 
                 DisguiseUtilities.setGrabSkinCommandUsed();
             }
         };
 
-        SkinUtils.grabSkin(args[0], callback);
+        SkinUtils.grabSkin(skin, callback);
 
         return true;
     }
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage(LibsMsg.GRAB_DISG_HELP_1.get());
-        sender.sendMessage(LibsMsg.GRAB_DISG_HELP_2.get());
-        sender.sendMessage(LibsMsg.GRAB_DISG_HELP_3.get());
-        sender.sendMessage(LibsMsg.GRAB_DISG_HELP_4.get());
-        sender.sendMessage(LibsMsg.GRAB_DISG_HELP_5.get());
+        LibsMsg.GRAB_DISG_HELP_1.send(sender);
+        LibsMsg.GRAB_DISG_HELP_2.send(sender);
+        LibsMsg.GRAB_DISG_HELP_3.send(sender);
+        LibsMsg.GRAB_DISG_HELP_4.send(sender);
+        LibsMsg.GRAB_DISG_HELP_5.send(sender);
+        LibsMsg.GRAB_DISG_HELP_6.send(sender);
     }
 }

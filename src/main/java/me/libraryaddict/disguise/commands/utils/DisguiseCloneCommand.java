@@ -22,13 +22,13 @@ public class DisguiseCloneCommand extends DisguiseBaseCommand implements TabComp
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (sender.getName().equals("CONSOLE")) {
-            sender.sendMessage(LibsMsg.NO_CONSOLE.get());
+            LibsMsg.NO_CONSOLE.send(sender);
             return true;
         }
 
         if (!sender.hasPermission("libsdisguises.disguise.disguiseclone")) {
 
-            sender.sendMessage(LibsMsg.NO_PERM.get());
+            LibsMsg.NO_PERM.send(sender);
             return true;
         }
 
@@ -53,7 +53,7 @@ public class DisguiseCloneCommand extends DisguiseBaseCommand implements TabComp
             } else if (option.equalsIgnoreCase(LibsMsg.DCLONE_SPRINT.get())) {
                 doSprint = true;
             } else {
-                sender.sendMessage(LibsMsg.INVALID_CLONE.get(option));
+                LibsMsg.INVALID_CLONE.send(sender, option);
                 return true;
             }
         }
@@ -67,7 +67,7 @@ public class DisguiseCloneCommand extends DisguiseBaseCommand implements TabComp
                     .addInteraction(sender.getName(), new DisguiseCloneInteraction(options),
                             DisguiseConfig.getDisguiseCloneExpire());
 
-            sender.sendMessage(LibsMsg.CLICK_TIMER.get(DisguiseConfig.getDisguiseCloneExpire()));
+            LibsMsg.CLICK_TIMER.send(sender, DisguiseConfig.getDisguiseCloneExpire());
         }
 
         return true;
@@ -103,8 +103,8 @@ public class DisguiseCloneCommand extends DisguiseBaseCommand implements TabComp
      */
     @Override
     protected void sendCommandUsage(CommandSender sender, DisguisePermissions permissions) {
-        sender.sendMessage(LibsMsg.CLONE_HELP1.get());
-        sender.sendMessage(LibsMsg.CLONE_HELP2.get());
-        sender.sendMessage(LibsMsg.CLONE_HELP3.get());
+        LibsMsg.CLONE_HELP1.send(sender);
+        LibsMsg.CLONE_HELP2.send(sender);
+        LibsMsg.CLONE_HELP3.send(sender);
     }
 }

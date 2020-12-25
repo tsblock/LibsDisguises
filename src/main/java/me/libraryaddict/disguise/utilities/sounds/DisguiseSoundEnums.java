@@ -1,11 +1,12 @@
-package me.libraryaddict.disguise.utilities;
+package me.libraryaddict.disguise.utilities.sounds;
 
 import lombok.Getter;
-import me.libraryaddict.disguise.utilities.DisguiseSound.SoundType;
+import me.libraryaddict.disguise.LibsDisguises;
+import me.libraryaddict.disguise.utilities.sounds.SoundGroup.SoundType;
 import org.bukkit.Sound;
 
 import java.util.Arrays;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 
 /**
  * Only living disguises go in here!
@@ -90,6 +91,9 @@ public enum DisguiseSoundEnums {
             new Sound[]{Sound.ENTITY_GUARDIAN_DEATH, Sound.ENTITY_GUARDIAN_DEATH_LAND},
             new Sound[]{Sound.ENTITY_GUARDIAN_AMBIENT, Sound.ENTITY_GUARDIAN_AMBIENT_LAND}, Sound.ENTITY_GUARDIAN_FLOP),
 
+    HOGLIN(Sound.ENTITY_HOGLIN_HURT, Sound.ENTITY_HOGLIN_STEP, Sound.ENTITY_HOGLIN_DEATH, Sound.ENTITY_HOGLIN_AMBIENT,
+            Sound.ENTITY_HOGLIN_CONVERTED_TO_ZOMBIFIED, Sound.ENTITY_HOGLIN_ANGRY, Sound.ENTITY_HOGLIN_RETREAT),
+
     HORSE(Sound.ENTITY_HORSE_HURT, new Sound[]{Sound.ENTITY_HORSE_STEP, Sound.ENTITY_HORSE_STEP_WOOD},
             Sound.ENTITY_HORSE_DEATH, Sound.ENTITY_HORSE_AMBIENT, Sound.ENTITY_HORSE_GALLOP, Sound.ENTITY_HORSE_SADDLE,
             Sound.ENTITY_DONKEY_ANGRY, Sound.ENTITY_HORSE_ARMOR, Sound.ENTITY_HORSE_LAND, Sound.ENTITY_HORSE_JUMP,
@@ -112,6 +116,8 @@ public enum DisguiseSoundEnums {
             new Sound[]{Sound.ENTITY_MAGMA_CUBE_DEATH, Sound.ENTITY_MAGMA_CUBE_DEATH_SMALL}, null,
             Sound.ENTITY_MAGMA_CUBE_SQUISH, Sound.ENTITY_MAGMA_CUBE_SQUISH_SMALL),
 
+    MINECART(null, Sound.ENTITY_MINECART_RIDING, null, null, Sound.ENTITY_MINECART_INSIDE),
+
     MULE(Sound.ENTITY_MULE_HURT, Sound.BLOCK_GRASS_STEP, Sound.ENTITY_MULE_DEATH, Sound.ENTITY_MULE_AMBIENT,
             Sound.ENTITY_MULE_CHEST),
 
@@ -128,8 +134,18 @@ public enum DisguiseSoundEnums {
 
     PIG(Sound.ENTITY_PIG_HURT, Sound.ENTITY_PIG_STEP, Sound.ENTITY_PIG_DEATH, Sound.ENTITY_PIG_AMBIENT),
 
-    PIG_ZOMBIE(Sound.ENTITY_ZOMBIE_PIGMAN_HURT, null, Sound.ENTITY_ZOMBIE_PIGMAN_DEATH,
-            Sound.ENTITY_ZOMBIE_PIGMAN_AMBIENT, Sound.ENTITY_ZOMBIE_PIGMAN_ANGRY),
+    PIGLIN(Sound.ENTITY_PIGLIN_HURT, Sound.ENTITY_PIGLIN_STEP, Sound.ENTITY_PIGLIN_DEATH, Sound.ENTITY_PIGLIN_AMBIENT,
+            Sound.ENTITY_PIGLIN_RETREAT, Sound.ENTITY_PIGLIN_JEALOUS, Sound.ENTITY_PIGLIN_ADMIRING_ITEM,
+            Sound.ENTITY_PIGLIN_CELEBRATE),
+
+    PIGLIN_BRUTE("ENTITY_PIGLIN_BRUTE_HURT", "ENTITY_PIGLIN_BRUTE_STEP", "ENTITY_PIGLIN_BRUTE_DEATH",
+            "ENTITY_PIGLIN_BRUTE_AMBIENT", "ENTITY_PIGLIN_BRUTE_CONVERTED_TO_ZOMBIFIED", "ENTITY_PIGLIN_BRUTE_ANGRY"),
+
+    PIG_ZOMBIE("ENTITY_ZOMBIE_PIGMAN_HURT", null, "ENTITY_ZOMBIE_PIGMAN_DEATH", "ENTITY_ZOMBIE_PIGMAN_AMBIENT",
+            "ENTITY_ZOMBIE_PIGMAN_ANGRY"),
+
+    PILLAGER(Sound.ENTITY_PILLAGER_HURT, Sound.BLOCK_GRASS_STEP, Sound.ENTITY_PILLAGER_DEATH,
+            Sound.ENTITY_PILLAGER_AMBIENT, Sound.ENTITY_PILLAGER_CELEBRATE),
 
     PLAYER(Sound.ENTITY_PLAYER_HURT, Arrays.stream(Sound.values())
             .filter(sound -> sound.name().startsWith("BLOCK_") && sound.name().endsWith("_STEP")).toArray(Sound[]::new),
@@ -148,6 +164,10 @@ public enum DisguiseSoundEnums {
 
     RABBIT(Sound.ENTITY_RABBIT_HURT, Sound.ENTITY_RABBIT_JUMP, Sound.ENTITY_RABBIT_DEATH, Sound.ENTITY_RABBIT_AMBIENT,
             Sound.ENTITY_RABBIT_ATTACK),
+
+    RAVAGER(Sound.ENTITY_RAVAGER_HURT, Sound.ENTITY_RAVAGER_STEP, Sound.ENTITY_RAVAGER_DEATH,
+            Sound.ENTITY_RAVAGER_AMBIENT, Sound.ENTITY_RAVAGER_ATTACK, Sound.ENTITY_RAVAGER_CELEBRATE,
+            Sound.ENTITY_RAVAGER_ROAR, Sound.ENTITY_RAVAGER_STUNNED),
 
     SALMON(Sound.ENTITY_SALMON_HURT, null, Sound.ENTITY_SALMON_DEATH, Sound.ENTITY_SALMON_AMBIENT,
             Sound.ENTITY_SALMON_FLOP, Sound.ENTITY_FISH_SWIM),
@@ -184,15 +204,21 @@ public enum DisguiseSoundEnums {
 
     STRAY(Sound.ENTITY_STRAY_HURT, Sound.ENTITY_STRAY_STEP, Sound.ENTITY_STRAY_DEATH, Sound.ENTITY_STRAY_AMBIENT),
 
+    STRIDER(Sound.ENTITY_STRIDER_HURT, new Sound[]{Sound.ENTITY_STRIDER_STEP, Sound.ENTITY_STRIDER_STEP_LAVA},
+            Sound.ENTITY_STRIDER_DEATH, Sound.ENTITY_STRIDER_AMBIENT, Sound.ENTITY_STRIDER_EAT,
+            Sound.ENTITY_STRIDER_HAPPY, Sound.ENTITY_STRIDER_RETREAT, Sound.ENTITY_STRIDER_SADDLE),
+
     SQUID(Sound.ENTITY_SQUID_HURT, null, Sound.ENTITY_SQUID_DEATH, Sound.ENTITY_SQUID_AMBIENT,
             Sound.ENTITY_SQUID_SQUIRT, Sound.ENTITY_FISH_SWIM),
 
     TROPICAL_FISH(Sound.ENTITY_TROPICAL_FISH_HURT, null, Sound.ENTITY_TROPICAL_FISH_DEATH,
             Sound.ENTITY_TROPICAL_FISH_AMBIENT, Sound.ENTITY_TROPICAL_FISH_FLOP, Sound.ENTITY_FISH_SWIM),
 
-    TURTLE(new Sound[]{Sound.ENTITY_TURTLE_HURT, Sound.ENTITY_TURTLE_HURT_BABY},
-            new Sound[]{Sound.ENTITY_TURTLE_SHAMBLE, Sound.ENTITY_TURTLE_SHAMBLE_BABY},
-            new Sound[]{Sound.ENTITY_TURTLE_DEATH, Sound.ENTITY_TURTLE_DEATH_BABY}, Sound.ENTITY_TURTLE_AMBIENT_LAND,
+    TURTLE(new Sound[]{Sound.ENTITY_TURTLE_HURT, Sound.ENTITY_TURTLE_HURT_BABY}, new Sound[]
+
+            {Sound.ENTITY_TURTLE_SHAMBLE, Sound.ENTITY_TURTLE_SHAMBLE_BABY}, new Sound[]
+
+            {Sound.ENTITY_TURTLE_DEATH, Sound.ENTITY_TURTLE_DEATH_BABY}, Sound.ENTITY_TURTLE_AMBIENT_LAND,
             Sound.ENTITY_TURTLE_LAY_EGG),
 
     VEX(Sound.ENTITY_VEX_HURT, null, Sound.ENTITY_VEX_DEATH, Sound.ENTITY_VEX_AMBIENT, Sound.ENTITY_VEX_CHARGE),
@@ -215,6 +241,9 @@ public enum DisguiseSoundEnums {
             Sound.ENTITY_WOLF_GROWL, Sound.ENTITY_WOLF_PANT, Sound.ENTITY_WOLF_HOWL, Sound.ENTITY_WOLF_SHAKE,
             Sound.ENTITY_WOLF_WHINE),
 
+    ZOGLIN(Sound.ENTITY_ZOGLIN_HURT, Sound.ENTITY_ZOGLIN_STEP, Sound.ENTITY_ZOGLIN_DEATH, Sound.ENTITY_ZOGLIN_AMBIENT,
+            Sound.ENTITY_ZOGLIN_ANGRY, Sound.ENTITY_ZOGLIN_ATTACK),
+
     ZOMBIE(Sound.ENTITY_ZOMBIE_HURT, Sound.ENTITY_ZOMBIE_STEP, Sound.ENTITY_ZOMBIE_DEATH, Sound.ENTITY_ZOMBIE_AMBIENT,
             Sound.ENTITY_ZOMBIE_INFECT, Sound.ENTITY_ZOMBIE_ATTACK_WOODEN_DOOR, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR,
             Sound.ENTITY_ZOMBIE_ATTACK_IRON_DOOR),
@@ -227,12 +256,20 @@ public enum DisguiseSoundEnums {
     ZOMBIE_VILLAGER(Sound.ENTITY_ZOMBIE_VILLAGER_HURT, Sound.ENTITY_ZOMBIE_VILLAGER_STEP,
             Sound.ENTITY_ZOMBIE_VILLAGER_DEATH, Sound.ENTITY_ZOMBIE_VILLAGER_AMBIENT, Sound.ENTITY_ZOMBIE_INFECT,
             Sound.ENTITY_ZOMBIE_ATTACK_WOODEN_DOOR, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR,
-            Sound.ENTITY_ZOMBIE_ATTACK_IRON_DOOR);
+            Sound.ENTITY_ZOMBIE_ATTACK_IRON_DOOR),
+
+    ZOMBIFIED_PIGLIN(Sound.ENTITY_ZOMBIFIED_PIGLIN_HURT, null, Sound.ENTITY_ZOMBIFIED_PIGLIN_DEATH,
+            Sound.ENTITY_ZOMBIFIED_PIGLIN_AMBIENT, Sound.ENTITY_ZOMBIFIED_PIGLIN_ANGRY,
+            Sound.ENTITY_PIGLIN_CONVERTED_TO_ZOMBIFIED);
 
     @Getter
-    private LinkedHashMap<Sound, SoundType> disguiseSounds = new LinkedHashMap<>();
+    private HashMap<String, SoundType> sounds = new HashMap<>();
 
     DisguiseSoundEnums(Object hurt, Object step, Object death, Object idle, Object... sounds) {
+        if (LibsDisguises.getInstance() != null) {
+            throw new IllegalStateException("This cannot be called on a running server");
+        }
+
         addSound(hurt, SoundType.HURT);
         addSound(step, SoundType.STEP);
         addSound(death, SoundType.DEATH);
@@ -258,12 +295,26 @@ public enum DisguiseSoundEnums {
             }
         } else if (sound instanceof Sound) {
             addSound((Sound) sound, type);
+        } else if (sound instanceof String[]) {
+            for (String s : (String[]) sound) {
+                if (s == null) {
+                    continue;
+                }
+
+                addSound(s, type);
+            }
+        } else if (sound instanceof String) {
+            addSound((String) sound, type);
         } else {
             throw new IllegalArgumentException("Was given an unknown object " + sound);
         }
     }
 
     private void addSound(Sound sound, SoundType type) {
-        disguiseSounds.put(sound, type);
+        addSound(sound.name(), type);
+    }
+
+    private void addSound(String sound, SoundType type) {
+        sounds.put(sound, type);
     }
 }

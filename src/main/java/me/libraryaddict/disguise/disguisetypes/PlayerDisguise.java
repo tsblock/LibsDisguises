@@ -1,30 +1,23 @@
 package me.libraryaddict.disguise.disguisetypes;
 
-import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.wrappers.EnumWrappers.NativeGameMode;
 import com.comphenix.protocol.wrappers.EnumWrappers.PlayerInfoAction;
-import com.comphenix.protocol.wrappers.PlayerInfoData;
-import com.comphenix.protocol.wrappers.WrappedChatComponent;
 import com.comphenix.protocol.wrappers.WrappedGameProfile;
 import lombok.Getter;
-import lombok.Setter;
-import me.libraryaddict.disguise.DisguiseAPI;
 import me.libraryaddict.disguise.DisguiseConfig;
 import me.libraryaddict.disguise.LibsDisguises;
 import me.libraryaddict.disguise.disguisetypes.watchers.PlayerWatcher;
 import me.libraryaddict.disguise.utilities.DisguiseUtilities;
 import me.libraryaddict.disguise.utilities.reflection.LibsProfileLookup;
+import me.libraryaddict.disguise.utilities.reflection.NmsVersion;
 import me.libraryaddict.disguise.utilities.reflection.ReflectionManager;
-import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
 import java.util.UUID;
 
 public class PlayerDisguise extends TargetedDisguise {
@@ -33,11 +26,14 @@ public class PlayerDisguise extends TargetedDisguise {
     private String playerName = "Herobrine";
     private String skinToUse;
     private boolean nameVisible = true;
-    private UUID uuid = UUID.randomUUID();
+    /**
+     * Has someone set name visible explicitly?
+     */
+    private boolean explicitNameVisible = false;
+    private final UUID uuid = UUID.randomUUID();
+    private transient DisguiseUtilities.DScoreTeam scoreboardName;
     @Getter
-    @Setter
-    private boolean dynamicName;
-    private volatile DisguiseUtilities.DScoreTeam scoreboardName;
+    private boolean deadmau5Ears;
 
     private PlayerDisguise() {
         super(DisguiseType.PLAYER);
@@ -57,6 +53,17 @@ public class PlayerDisguise extends TargetedDisguise {
 
     public PlayerDisguise(String name, String skinToUse) {
         this();
+
+        if (name.equals(skinToUse)) {
+            WrappedGameProfile profile = getProfile(skinToUse);
+
+            if (profile != null) {
+                setName(profile.getName());
+                setSkin(profile);
+                createDisguise();
+                return;
+            }
+        }
 
         setName(name);
         setSkin(skinToUse);
@@ -86,20 +93,41 @@ public class PlayerDisguise extends TargetedDisguise {
         createDisguise();
     }
 
+    @Override
+    public double getHeight() {
+        if (getWatcher() == null) {
+            return 1.8;
+        }
+
+        if (getEntity() == null || getWatcher().getModifiedEntityAnimations()[1]) {
+            return getWatcher().isSneaking() ? 1.5 : 1.8;
+        }
+
+        return getEntity() instanceof Player && ((Player) getEntity()).isSneaking() ? 1.5 : 1.8;
+    }
+
+    @Deprecated
     public DisguiseUtilities.DScoreTeam getScoreboardName() {
-        if (getName().length() <= 32 ? !DisguiseConfig.isScoreboardDisguiseNames() :
-                !DisguiseConfig.isExtendedDisguiseNames()) {
+        if (!DisguiseConfig.isScoreboardNames()) {
             throw new IllegalStateException("Cannot use this method when it's been disabled in config!");
         }
 
         if (scoreboardName == null) {
-            scoreboardName = DisguiseUtilities.createExtendedName(getName());
+            if (isUpsideDown() || isDeadmau5Ears()) {
+                scoreboardName = new DisguiseUtilities.DScoreTeam(this, new String[]{"", getProfileName(), ""});
+            } else {
+                scoreboardName = DisguiseUtilities.createExtendedName(this);
+            }
         }
 
         return scoreboardName;
     }
 
     private void setScoreboardName(String[] split) {
+        if (isUpsideDown() || isDeadmau5Ears()) {
+            return;
+        }
+
         getScoreboardName().setSplit(split);
     }
 
@@ -108,15 +136,16 @@ public class PlayerDisguise extends TargetedDisguise {
     }
 
     public boolean hasScoreboardName() {
-        if (isStaticName(getName())) {
+        if (!DisguiseConfig.isArmorstandsName() && isStaticName(getName())) {
             return false;
         }
 
-        return scoreboardName != null || DisguiseConfig.isScoreboardDisguiseNames() || getName().length() > 16;
+        return DisguiseConfig.isScoreboardNames();
     }
 
     public String getProfileName() {
-        return hasScoreboardName() ? getScoreboardName().getPlayer() : getName();
+        return isUpsideDown() ? "Dinnerbone" :
+                isDeadmau5Ears() ? "deadmau5" : hasScoreboardName() ? getScoreboardName().getPlayer() : getName();
     }
 
     public UUID getUUID() {
@@ -128,12 +157,23 @@ public class PlayerDisguise extends TargetedDisguise {
     }
 
     public PlayerDisguise setNameVisible(boolean nameVisible) {
-        if (isNameVisible() == nameVisible) {
+        return setNameVisible(nameVisible, false);
+    }
+
+    private PlayerDisguise setNameVisible(boolean nameVisible, boolean setInternally) {
+        if (isNameVisible() == nameVisible || (setInternally && explicitNameVisible)) {
             return this;
         }
 
+        if (!setInternally) {
+            explicitNameVisible = true;
+        }
+
         if (isDisguiseInUse()) {
-            if (!DisguiseConfig.isScoreboardDisguiseNames()) {
+            if (DisguiseConfig.isArmorstandsName()) {
+                this.nameVisible = nameVisible;
+                sendArmorStands(isNameVisible() ? DisguiseUtilities.reverse(getMultiName()) : new String[0]);
+            } else if (!DisguiseConfig.isScoreboardNames()) {
                 if (stopDisguise()) {
                     this.nameVisible = nameVisible;
 
@@ -164,11 +204,45 @@ public class PlayerDisguise extends TargetedDisguise {
         return (PlayerDisguise) super.addPlayer(playername);
     }
 
+    public PlayerDisguise setUpsideDown(boolean upsideDown) {
+        if (isUpsideDown() == upsideDown) {
+            return this;
+        }
+
+        getWatcher().setInternalUpsideDown(upsideDown);
+
+        if (isDisguiseInUse()) {
+            resendDisguise(DisguiseConfig.isArmorstandsName() ? getName() : "Dinnerbone", true);
+        } else {
+            scoreboardName = null;
+        }
+
+        return this;
+    }
+
+    public PlayerDisguise setDeadmau5Ears(boolean deadmau5Ears) {
+        if (deadmau5Ears == isDeadmau5Ears()) {
+            return this;
+        }
+
+        this.deadmau5Ears = deadmau5Ears;
+
+        if (isDisguiseInUse()) {
+            resendDisguise(DisguiseConfig.isArmorstandsName() ? getName() : "deadmau5", true);
+        } else {
+            scoreboardName = null;
+        }
+
+        return this;
+    }
+
     @Override
     public PlayerDisguise clone() {
         PlayerDisguise disguise = new PlayerDisguise();
 
-        disguise.playerName = getName();
+        if (getWatcher() != null) {
+            disguise.setWatcher(getWatcher().clone(disguise));
+        }
 
         if (currentLookup == null && gameProfile != null) {
             disguise.skinToUse = getSkin();
@@ -178,20 +252,13 @@ public class PlayerDisguise extends TargetedDisguise {
             disguise.setSkin(getSkin());
         }
 
-        disguise.setNameVisible(isNameVisible());
-        disguise.setReplaceSounds(isSoundsReplaced());
-        disguise.setViewSelfDisguise(isSelfDisguiseVisible());
-        disguise.setHearSelfDisguise(isSelfDisguiseSoundsReplaced());
-        disguise.setHideArmorFromSelf(isHidingArmorFromSelf());
-        disguise.setHideHeldItemFromSelf(isHidingHeldItemFromSelf());
-        disguise.setVelocitySent(isVelocitySent());
-        disguise.setModifyBoundingBox(isModifyBoundingBox());
+        disguise.setName(getName());
+        disguise.nameVisible = isNameVisible();
+        disguise.explicitNameVisible = explicitNameVisible;
+        disguise.setUpsideDown(isUpsideDown());
+        disguise.setDeadmau5Ears(isDeadmau5Ears());
 
-        if (getWatcher() != null) {
-            disguise.setWatcher(getWatcher().clone(disguise));
-        }
-
-        disguise.createDisguise();
+        clone(disguise);
 
         return disguise;
     }
@@ -226,62 +293,70 @@ public class PlayerDisguise extends TargetedDisguise {
             }
         }
 
+        if (DisguiseConfig.isCopyPlayerTeamInfo() &&
+                (DisguiseConfig.getPlayerNameType() == DisguiseConfig.PlayerNameType.TEAMS ||
+                        DisguiseConfig.getPlayerNameType() == DisguiseConfig.PlayerNameType.ARMORSTANDS)) {
+            name = DisguiseUtilities.getDisplayName(name);
+        }
+
         if (name.equals(playerName)) {
             return;
         }
 
-        int cLimit = DisguiseConfig.isExtendedDisguiseNames() ? 16 * 3 :
-                DisguiseConfig.isScoreboardDisguiseNames() ? 16 * 2 : 16;
+        int cLimit;
+
+        switch (DisguiseConfig.getPlayerNameType()) {
+            case TEAMS:
+                cLimit = (NmsVersion.v1_13.isSupported() ? 64 : 16) * 2;
+                break;
+            case EXTENDED:
+                cLimit = ((NmsVersion.v1_13.isSupported() ? 64 : 16) * 2) + 16;
+                break;
+            case ARMORSTANDS:
+                cLimit = 256;
+                break;
+            default:
+                cLimit = 16;
+                break;
+        }
+
         if (name.length() > cLimit) {
             name = name.substring(0, cLimit);
         }
 
         if (isDisguiseInUse()) {
-            boolean resendDisguise = false;
+            if (DisguiseConfig.isArmorstandsName()) {
+                playerName = name;
 
-            if (DisguiseConfig.isScoreboardDisguiseNames() && !isStaticName(name)) {
-                DisguiseUtilities.DScoreTeam team = getScoreboardName();
-                String[] split = DisguiseUtilities.getExtendedNameSplit(team.getPlayer(), name);
+                setNameVisible(!name.isEmpty(), true);
+                setMultiName(DisguiseUtilities.splitNewLine(name));
+            } else {
+                boolean resendDisguise = false;
 
-                resendDisguise = !split[1].equals(team.getPlayer());
-                setScoreboardName(split);
-            }
+                if (DisguiseConfig.isScoreboardNames() && !isStaticName(name)) {
+                    DisguiseUtilities.DScoreTeam team = getScoreboardName();
+                    String[] split = DisguiseUtilities.getExtendedNameSplit(team.getPlayer(), name);
 
-            resendDisguise =
-                    !DisguiseConfig.isScoreboardDisguiseNames() || isStaticName(name) || isStaticName(getName()) ||
-                            resendDisguise;
+                    resendDisguise = !split[1].equals(team.getPlayer());
+                    setScoreboardName(split);
+                }
 
-            if (resendDisguise) {
-                if (stopDisguise()) {
-                    if (getName().isEmpty() && !name.isEmpty()) {
-                        setNameVisible(true);
-                    } else if (!getName().isEmpty() && name.isEmpty()) {
-                        setNameVisible(false);
+                resendDisguise = !DisguiseConfig.isScoreboardNames() || isStaticName(name) || isStaticName(getName()) ||
+                        resendDisguise;
+
+                if (resendDisguise) {
+                    resendDisguise(name, false);
+                } else {
+                    if (getName().isEmpty() && !name.isEmpty() && !isNameVisible()) {
+                        setNameVisible(true, true);
+                    } else if (!getName().isEmpty() && name.isEmpty() && isNameVisible()) {
+                        setNameVisible(false, true);
+                    } else {
+                        DisguiseUtilities.updateExtendedName(this);
                     }
 
                     playerName = name;
-
-                    if (gameProfile != null) {
-                        gameProfile = ReflectionManager
-                                .getGameProfileWithThisSkin(uuid, getProfileName(), getGameProfile());
-                    }
-
-                    if (!startDisguise()) {
-                        throw new IllegalStateException("Unable to restart disguise");
-                    }
-                } else {
-                    throw new IllegalStateException("Unable to restart disguise");
                 }
-            } else {
-                if (getName().isEmpty() && !name.isEmpty() && !isNameVisible()) {
-                    setNameVisible(true);
-                } else if (!getName().isEmpty() && name.isEmpty() && isNameVisible()) {
-                    setNameVisible(false);
-                } else {
-                    DisguiseUtilities.updateExtendedName(this);
-                }
-
-                playerName = name;
             }
 
             if (isDisplayedInTab()) {
@@ -289,13 +364,13 @@ public class PlayerDisguise extends TargetedDisguise {
 
                 try {
                     for (Player player : Bukkit.getOnlinePlayers()) {
-                        if (!canSee(player))
+                        if (!canSee(player)) {
                             continue;
+                        }
 
                         ProtocolLibrary.getProtocolManager().sendServerPacket(player, addTab);
                     }
-                }
-                catch (InvocationTargetException e) {
+                } catch (InvocationTargetException e) {
                     e.printStackTrace();
                 }
             }
@@ -307,12 +382,11 @@ public class PlayerDisguise extends TargetedDisguise {
                 setScoreboardName(split);
             }
 
-            if (name.isEmpty()) {
-                setNameVisible(false);
-            } else {
-                setNameVisible(true);
+            if (DisguiseConfig.isArmorstandsName()) {
+                setMultiName(DisguiseUtilities.splitNewLine(name));
             }
 
+            setNameVisible(!name.isEmpty(), true);
             playerName = name;
 
             if (gameProfile != null) {
@@ -321,22 +395,53 @@ public class PlayerDisguise extends TargetedDisguise {
         }
     }
 
+    private void resendDisguise(String name, boolean updateTeams) {
+        if (stopDisguise()) {
+            if (getName().isEmpty() && !name.isEmpty()) {
+                setNameVisible(true, true);
+            } else if (!getName().isEmpty() && name.isEmpty()) {
+                setNameVisible(false, true);
+            }
+
+            playerName = name;
+
+            if (updateTeams) {
+                scoreboardName = null;
+            }
+
+            if (gameProfile != null) {
+                gameProfile = ReflectionManager.getGameProfileWithThisSkin(uuid, getProfileName(), getGameProfile());
+            }
+
+            if (!startDisguise()) {
+                throw new IllegalStateException("Unable to restart disguise");
+            }
+        } else {
+            throw new IllegalStateException("Unable to restart disguise");
+        }
+    }
+
     public String getSkin() {
         return skinToUse;
     }
 
     public PlayerDisguise setSkin(String newSkin) {
-        if (newSkin != null && newSkin.length() > 70) {
-            try {
-                return setSkin(DisguiseUtilities.getGson().fromJson(newSkin, WrappedGameProfile.class));
+        WrappedGameProfile profile = getProfile(newSkin);
+
+        if (profile != null) {
+            return setSkin(profile);
+        }
+
+        if (newSkin != null) {
+            String[] split = DisguiseUtilities.splitNewLine(newSkin);
+
+            if (split.length > 0) {
+                newSkin = split[0];
             }
-            catch (Exception ex) {
-                if (!"12345".equals("%%__USER__%%")) {
-                    throw new IllegalArgumentException(String.format(
-                            "The skin %s is too long to be a playername, but cannot be parsed to a GameProfile!",
-                            newSkin));
-                }
-            }
+        }
+
+        if (newSkin != null && newSkin.length() > 16) {
+            newSkin = null;
         }
 
         String oldSkin = skinToUse;
@@ -358,8 +463,9 @@ public class PlayerDisguise extends TargetedDisguise {
                 currentLookup = new LibsProfileLookup() {
                     @Override
                     public void onLookup(WrappedGameProfile gameProfile) {
-                        if (currentLookup != this || gameProfile == null || gameProfile.getProperties().isEmpty())
+                        if (currentLookup != this || gameProfile == null || gameProfile.getProperties().isEmpty()) {
                             return;
+                        }
 
                         setSkin(gameProfile);
 
@@ -392,8 +498,6 @@ public class PlayerDisguise extends TargetedDisguise {
             return this;
         }
 
-        Validate.notEmpty(gameProfile.getName(), "Name must be set");
-
         currentLookup = null;
 
         this.skinToUse = gameProfile.getName();
@@ -402,6 +506,20 @@ public class PlayerDisguise extends TargetedDisguise {
         refreshDisguise();
 
         return this;
+    }
+
+    private WrappedGameProfile getProfile(String string) {
+        if (string != null && string.length() > 70 && string.startsWith("{\"id\":") && string.endsWith("}") &&
+                string.contains(",\"name\":")) {
+            try {
+                return DisguiseUtilities.getGson().fromJson(string, WrappedGameProfile.class);
+            } catch (Exception ex) {
+                throw new IllegalStateException(
+                        "Tried to parse " + string + " to a GameProfile, but it has been formatted incorrectly!");
+            }
+        }
+
+        return null;
     }
 
     private void refreshDisguise() {
@@ -414,14 +532,14 @@ public class PlayerDisguise extends TargetedDisguise {
 
                 try {
                     for (Player player : Bukkit.getOnlinePlayers()) {
-                        if (!canSee(player))
+                        if (!canSee(player)) {
                             continue;
+                        }
 
                         ProtocolLibrary.getProtocolManager().sendServerPacket(player, deleteTab);
                         ProtocolLibrary.getProtocolManager().sendServerPacket(player, addTab);
                     }
-                }
-                catch (InvocationTargetException e) {
+                } catch (InvocationTargetException e) {
                     e.printStackTrace();
                 }
             }
@@ -513,8 +631,9 @@ public class PlayerDisguise extends TargetedDisguise {
             currentLookup = new LibsProfileLookup() {
                 @Override
                 public void onLookup(WrappedGameProfile gameProfile) {
-                    if (currentLookup != this || gameProfile == null || gameProfile.getProperties().isEmpty())
+                    if (currentLookup != this || gameProfile == null || gameProfile.getProperties().isEmpty()) {
                         return;
+                    }
 
                     setSkin(gameProfile);
 

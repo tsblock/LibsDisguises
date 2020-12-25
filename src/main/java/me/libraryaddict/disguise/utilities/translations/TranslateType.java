@@ -10,10 +10,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Created by libraryaddict on 10/06/2017.
@@ -37,11 +34,11 @@ public enum TranslateType {
             type.loadTranslations();
         }
 
+        TranslateFiller.fillConfigs();
+
         if (!LibsPremium.isPremium() && DisguiseConfig.isUseTranslations()) {
             DisguiseUtilities.getLogger().severe("You must purchase the plugin to use translations!");
         }
-
-        TranslateFiller.fillConfigs();
     }
 
     protected void saveTranslations() {
@@ -80,7 +77,7 @@ public enum TranslateType {
         }
 
         if (!getFile().exists()) {
-            DisguiseUtilities.getLogger().info("Translations for " + name() + " missing! Skipping...");
+            DisguiseUtilities.getLogger().info("Translations for " + name() + " missing! Saving..");
             return;
         }
 
@@ -178,6 +175,11 @@ public enum TranslateType {
                         writer.write(
                                 "# %s is where text is inserted, look up printf format codes if you're interested\n");
                     }
+
+                    writer.write(
+                            "# To translate, follow this example 'Original Message': 'My New Message'\n# The Original" +
+                                    " Message is used as a yaml config key to get your new message!");
+                    writer.write("\n# To use hex color codes, use <#hexcolor> where hexcolor is the 6 char code");
                 }
             }
 
@@ -193,10 +195,10 @@ public enum TranslateType {
         if (translated == null || !LibsPremium.isPremium() || !DisguiseConfig.isUseTranslations())
             return translated;
 
-        String lowerCase = translated.toLowerCase();
+        String lowerCase = translated.toLowerCase(Locale.ENGLISH);
 
         for (Map.Entry<String, String> entry : this.translated.entrySet()) {
-            if (!Objects.equals(entry.getValue().toLowerCase(), lowerCase))
+            if (!Objects.equals(entry.getValue().toLowerCase(Locale.ENGLISH), lowerCase))
                 continue;
 
             return entry.getKey();

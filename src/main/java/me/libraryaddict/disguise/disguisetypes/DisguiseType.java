@@ -8,6 +8,8 @@ import org.apache.commons.lang.StringUtils;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 
+import java.util.Locale;
+
 public enum DisguiseType {
     AREA_EFFECT_CLOUD(3, 0),
 
@@ -17,13 +19,13 @@ public enum DisguiseType {
 
     BAT,
 
-    @NmsAddedIn(val = NmsVersion.v1_15) BEE,
+    @NmsAddedIn(NmsVersion.v1_15) BEE,
 
     BLAZE,
 
     BOAT(1),
 
-    @NmsAddedIn(val = NmsVersion.v1_14) CAT,
+    @NmsAddedIn(NmsVersion.v1_14) CAT,
 
     CAVE_SPIDER,
 
@@ -75,13 +77,15 @@ public enum DisguiseType {
 
     FISHING_HOOK(90),
 
-    @NmsAddedIn(val = NmsVersion.v1_14) FOX,
+    @NmsAddedIn(NmsVersion.v1_14) FOX,
 
     GHAST,
 
     GIANT,
 
     GUARDIAN,
+
+    @NmsAddedIn(NmsVersion.v1_16) HOGLIN,
 
     HORSE,
 
@@ -115,6 +119,10 @@ public enum DisguiseType {
 
     MINECART_TNT(10, 3),
 
+    MODDED_MISC,
+
+    MODDED_LIVING,
+
     MULE,
 
     MUSHROOM_COW,
@@ -123,7 +131,7 @@ public enum DisguiseType {
 
     PAINTING,
 
-    @NmsAddedIn(val = NmsVersion.v1_14) PANDA,
+    @NmsAddedIn(NmsVersion.v1_14) PANDA,
 
     PARROT,
 
@@ -131,9 +139,13 @@ public enum DisguiseType {
 
     PIG,
 
-    PIG_ZOMBIE,
+    @NmsRemovedIn(NmsVersion.v1_16) PIG_ZOMBIE,
 
-    @NmsAddedIn(val = NmsVersion.v1_14) PILLAGER,
+    @NmsAddedIn(NmsVersion.v1_16) PIGLIN,
+
+    @NmsAddedIn(NmsVersion.v1_16) PIGLIN_BRUTE,
+
+    @NmsAddedIn(NmsVersion.v1_14) PILLAGER,
 
     PLAYER,
 
@@ -145,7 +157,7 @@ public enum DisguiseType {
 
     RABBIT,
 
-    @NmsAddedIn(val = NmsVersion.v1_14) RAVAGER,
+    @NmsAddedIn(NmsVersion.v1_14) RAVAGER,
 
     SALMON,
 
@@ -179,19 +191,19 @@ public enum DisguiseType {
 
     STRAY,
 
+    @NmsAddedIn(NmsVersion.v1_16) STRIDER,
+
     THROWN_EXP_BOTTLE(75),
 
-    @NmsRemovedIn(val = NmsVersion.v1_14) TIPPED_ARROW(60),
+    @NmsRemovedIn(NmsVersion.v1_14) TIPPED_ARROW(60),
 
     TRIDENT(94, 0),
 
-    @NmsAddedIn(val = NmsVersion.v1_14) TRADER_LLAMA,
+    @NmsAddedIn(NmsVersion.v1_14) TRADER_LLAMA,
 
     TROPICAL_FISH,
 
     TURTLE,
-
-    ZOMBIE_HORSE,
 
     UNKNOWN,
 
@@ -201,7 +213,7 @@ public enum DisguiseType {
 
     VINDICATOR,
 
-    @NmsAddedIn(val = NmsVersion.v1_14) WANDERING_TRADER,
+    @NmsAddedIn(NmsVersion.v1_14) WANDERING_TRADER,
 
     WITCH,
 
@@ -213,9 +225,15 @@ public enum DisguiseType {
 
     WOLF,
 
+    @NmsAddedIn(NmsVersion.v1_16) ZOGLIN,
+
     ZOMBIE,
 
-    ZOMBIE_VILLAGER;
+    ZOMBIE_HORSE,
+
+    ZOMBIE_VILLAGER,
+
+    @NmsAddedIn(NmsVersion.v1_16) ZOMBIFIED_PIGLIN;
 
     public static DisguiseType getType(Entity entity) {
         DisguiseType disguiseType = getType(entity.getType());
@@ -261,7 +279,12 @@ public enum DisguiseType {
         }
 
         try {
-            setEntityType(EntityType.valueOf(name()));
+            // Why oh why can't isCustom() work :(
+            if (name().startsWith("MODDED_")) {
+                setEntityType(EntityType.UNKNOWN);
+            } else {
+                setEntityType(EntityType.valueOf(name()));
+            }
         }
         catch (Exception ex) {
         }
@@ -318,11 +341,13 @@ public enum DisguiseType {
     }
 
     public boolean isMisc() {
-        return getEntityType() != null && !getEntityType().isAlive();
+        return this == DisguiseType.MODDED_MISC ||
+                (!isCustom() && getEntityType() != null && !getEntityType().isAlive());
     }
 
     public boolean isMob() {
-        return getEntityType() != null && getEntityType().isAlive() && !isPlayer();
+        return this == DisguiseType.MODDED_LIVING ||
+                (!isCustom() && getEntityType() != null && getEntityType().isAlive() && !isPlayer());
     }
 
     public boolean isPlayer() {
@@ -333,11 +358,15 @@ public enum DisguiseType {
         return this == DisguiseType.UNKNOWN;
     }
 
+    public boolean isCustom() {
+        return this == DisguiseType.MODDED_MISC || this == DisguiseType.MODDED_LIVING;
+    }
+
     public String toReadable() {
         String[] split = name().split("_");
 
         for (int i = 0; i < split.length; i++) {
-            split[i] = split[i].substring(0, 1) + split[i].substring(1).toLowerCase();
+            split[i] = split[i].charAt(0) + split[i].substring(1).toLowerCase(Locale.ENGLISH);
         }
 
         return TranslateType.DISGUISES.get(StringUtils.join(split, " "));

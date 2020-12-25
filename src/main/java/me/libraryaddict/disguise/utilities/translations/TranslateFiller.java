@@ -9,6 +9,7 @@ import org.bukkit.entity.EntityType;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * Created by libraryaddict on 10/06/2017.
@@ -36,19 +37,19 @@ public class TranslateFiller {
                 }
             }
 
-            if (info.getOtherValues() != null) {
+            /*if (info.getOtherValues() != null) {
                 for (String e : info.getOtherValues()) {
                     TranslateType.DISGUISE_OPTIONS_PARAMETERS
                             .save(e, "Used for the disguise option " + info.getRawName());
                 }
-            }
+            }*/
         }
 
         for (DisguiseType type : DisguiseType.values()) {
             String[] split = type.name().split("_");
 
             for (int i = 0; i < split.length; i++) {
-                split[i] = split[i].substring(0, 1) + split[i].substring(1).toLowerCase();
+                split[i] = split[i].charAt(0) + split[i].substring(1).toLowerCase(Locale.ENGLISH);
             }
 
             TranslateType.DISGUISES.save(StringUtils.join(split, " "), "Name for the " + type.name() + " disguise");

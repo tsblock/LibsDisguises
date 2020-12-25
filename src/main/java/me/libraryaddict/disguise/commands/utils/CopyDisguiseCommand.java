@@ -4,18 +4,15 @@ import me.libraryaddict.disguise.DisguiseAPI;
 import me.libraryaddict.disguise.DisguiseConfig;
 import me.libraryaddict.disguise.LibsDisguises;
 import me.libraryaddict.disguise.commands.interactions.CopyDisguiseInteraction;
-import me.libraryaddict.disguise.commands.interactions.DisguiseModifyInteraction;
 import me.libraryaddict.disguise.disguisetypes.Disguise;
 import me.libraryaddict.disguise.disguisetypes.PlayerDisguise;
 import me.libraryaddict.disguise.utilities.DisguiseUtilities;
 import me.libraryaddict.disguise.utilities.LibsPremium;
 import me.libraryaddict.disguise.utilities.parser.DisguiseParser;
-import me.libraryaddict.disguise.utilities.reflection.NmsVersion;
 import me.libraryaddict.disguise.utilities.translations.LibsMsg;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
-import org.apache.commons.lang.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -35,12 +32,12 @@ public class CopyDisguiseCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
         if (sender instanceof Player && !sender.isOp() &&
                 (!LibsPremium.isPremium() || LibsPremium.getPaidInformation() == LibsPremium.getPluginInformation())) {
-            sender.sendMessage(ChatColor.RED + "Please purchase Lib's Disguises to enable player commands");
+            sender.sendMessage(ChatColor.RED + "This is the free version of Lib's Disguises, player commands are limited to console and Operators only! Purchase the plugin for non-admin usage!");
             return true;
         }
 
         if (!sender.hasPermission("libsdisguises.copydisguise")) {
-            sender.sendMessage(LibsMsg.NO_PERM.get());
+            LibsMsg.NO_PERM.send(sender);
             return true;
         }
 
@@ -60,7 +57,7 @@ public class CopyDisguiseCommand implements CommandExecutor {
             }
 
             if (target == null) {
-                sender.sendMessage(LibsMsg.CANNOT_FIND_PLAYER.get(args[0]));
+                LibsMsg.CANNOT_FIND_PLAYER.send(sender, args[0]);
                 return true;
             }
         }
@@ -72,7 +69,7 @@ public class CopyDisguiseCommand implements CommandExecutor {
                     .addInteraction(sender.getName(), new CopyDisguiseInteraction(this),
                             DisguiseConfig.getDisguiseEntityExpire());
 
-            sender.sendMessage(LibsMsg.DISGUISECOPY_INTERACT.get(DisguiseConfig.getDisguiseEntityExpire()));
+            LibsMsg.DISGUISECOPY_INTERACT.send(sender, DisguiseConfig.getDisguiseEntityExpire());
             return true;
         }
 
@@ -91,10 +88,10 @@ public class CopyDisguiseCommand implements CommandExecutor {
     }
 
     public void sendMessage(CommandSender sender, LibsMsg msg, LibsMsg oldVer, String string, boolean forceAbbrev) {
-        if (!NmsVersion.v1_13.isSupported()) {
-            sender.sendMessage(oldVer.get(string));
+     /*   if (!NmsVersion.v1_13.isSupported()) {
+            oldVer.send(sender, string);
             return;
-        }
+        }*/
 
         ComponentBuilder builder = new ComponentBuilder("").appendLegacy(msg.get()).append(" ");
 

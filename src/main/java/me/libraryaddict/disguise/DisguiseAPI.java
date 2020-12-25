@@ -25,10 +25,15 @@ import org.bukkit.potion.PotionEffectType;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 public class DisguiseAPI {
     private static int selfDisguiseId = ReflectionManager.getNewEntityId(true);
+    @Getter
+    private static int entityAttachmentId = ReflectionManager.getNewEntityId(true);
 
     public static void addCustomDisguise(String disguiseName, String disguiseInfo) throws DisguiseParseException {
         // Dirty fix for anyone that somehow got this far with a . in the name, invalid yaml!
@@ -51,13 +56,12 @@ public class DisguiseAPI {
             }
 
             ConfigurationSection section = configuration.getConfigurationSection("Disguises");
-            section.set(disguiseName, disguiseInfo);
+            section.set(disguiseName, disguiseInfo.replace("\n", "\\n").replace("\r", "\\r"));
 
             configuration.save(disguisesFile);
 
             DisguiseUtilities.getLogger().info("Added new Custom Disguise " + disguiseName);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -69,8 +73,9 @@ public class DisguiseAPI {
     public static String getRawCustomDisguise(String disguiseName) {
         Map.Entry<DisguisePerm, String> entry = DisguiseConfig.getRawCustomDisguise(disguiseName);
 
-        if (entry == null)
+        if (entry == null) {
             return null;
+        }
 
         return entry.getValue();
     }
@@ -191,8 +196,7 @@ public class DisguiseAPI {
                                             }
                                         }
                                         watcherMethod.invoke(watcher, value);
-                                    }
-                                    catch (Exception ex) {
+                                    } catch (Exception ex) {
                                         ex.printStackTrace();
                                     }
                                 }
@@ -226,8 +230,13 @@ public class DisguiseAPI {
         }
 
         // They prefer to have the opposite of whatever the view disguises option is
-        if (hasSelfDisguisePreference(entity) && disguise.isSelfDisguiseVisible() == DisguiseConfig.isViewDisguises())
+        if (hasSelfDisguisePreference(entity) && disguise.isSelfDisguiseVisible() == DisguiseConfig.isViewDisguises()) {
             disguise.setViewSelfDisguise(!disguise.isSelfDisguiseVisible());
+        }
+
+        if (hasActionBarPreference(entity) && !isActionBarShown(entity)) {
+            disguise.setNotifyBar(DisguiseConfig.NotifyBar.NONE);
+        }
 
         disguise.startDisguise();
     }
@@ -357,7 +366,7 @@ public class DisguiseAPI {
             return null;
         }
 
-        return DisguiseUtilities.getMainDisguise(disguised.getUniqueId());
+        return DisguiseUtilities.getMainDisguise(disguised.getEntityId());
     }
 
     public static String parseToString(Disguise disguise, boolean outputSkin) {
@@ -394,7 +403,7 @@ public class DisguiseAPI {
             return null;
         }
 
-        return DisguiseUtilities.getDisguises(disguised.getUniqueId());
+        return DisguiseUtilities.getDisguises(disguised.getEntityId());
     }
 
     public static int getSelfDisguiseId() {
@@ -440,8 +449,22 @@ public class DisguiseAPI {
         return hasSelfDisguisePreference(entity) != DisguiseConfig.isViewDisguises();
     }
 
+    /**
+     * Returns true if the entitiy has /disguiseviewself toggled on.
+     *
+     * @param entity
+     * @return
+     */
+    public static boolean isActionBarShown(Entity entity) {
+        return !hasActionBarPreference(entity);
+    }
+
     public static boolean hasSelfDisguisePreference(Entity entity) {
-        return Disguise.getViewSelf().contains(entity.getUniqueId());
+        return DisguiseUtilities.getViewSelf().contains(entity.getUniqueId());
+    }
+
+    public static boolean hasActionBarPreference(Entity entity) {
+        return DisguiseUtilities.getViewBar().contains(entity.getUniqueId());
     }
 
     /**
@@ -476,10 +499,33 @@ public class DisguiseAPI {
 
         if (!canSeeSelfDisguises == DisguiseConfig.isViewDisguises()) {
             if (!hasSelfDisguisePreference(entity)) {
-                Disguise.getViewSelf().add(entity.getUniqueId());
+                DisguiseUtilities.getViewSelf().add(entity.getUniqueId());
+                DisguiseUtilities.addSaveAttempt();
             }
         } else {
-            Disguise.getViewSelf().remove(entity.getUniqueId());
+            DisguiseUtilities.getViewSelf().remove(entity.getUniqueId());
+            DisguiseUtilities.addSaveAttempt();
+        }
+    }
+
+    public static void setActionBarShown(Player player, boolean isShown) {
+        if (isDisguised(player)) {
+            Disguise[] disguises = getDisguises(player);
+
+            for (Disguise disguise : disguises) {
+                disguise.setNotifyBar(isShown ? DisguiseConfig.getNotifyBar() : DisguiseConfig.NotifyBar.NONE);
+            }
+        }
+
+        // If default is view and we want the opposite
+        if (!isShown) {
+            if (!hasActionBarPreference(player)) {
+                DisguiseUtilities.getViewBar().add(player.getUniqueId());
+                DisguiseUtilities.addSaveAttempt();
+            }
+        } else {
+            DisguiseUtilities.getViewBar().remove(player.getUniqueId());
+            DisguiseUtilities.addSaveAttempt();
         }
     }
 

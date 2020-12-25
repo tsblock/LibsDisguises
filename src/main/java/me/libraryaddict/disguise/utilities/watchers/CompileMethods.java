@@ -1,27 +1,35 @@
 package me.libraryaddict.disguise.utilities.watchers;
 
 import me.libraryaddict.disguise.disguisetypes.FlagWatcher;
-import me.libraryaddict.disguise.utilities.DisguiseSound;
-import me.libraryaddict.disguise.utilities.DisguiseSoundEnums;
 import me.libraryaddict.disguise.utilities.LibsPremium;
 import me.libraryaddict.disguise.utilities.reflection.ClassGetter;
 import me.libraryaddict.disguise.utilities.reflection.NmsAddedIn;
 import me.libraryaddict.disguise.utilities.reflection.NmsRemovedIn;
+import me.libraryaddict.disguise.utilities.sounds.DisguiseSoundEnums;
+import me.libraryaddict.disguise.utilities.sounds.SoundGroup;
 import org.apache.commons.lang.StringUtils;
-import org.bukkit.Sound;
+import org.bukkit.craftbukkit.libs.org.apache.commons.io.FileUtils;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 /**
  * Created by libraryaddict on 13/02/2020.
  */
 public class CompileMethods {
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface CompileMethodsIntfer {
+        String user() default "%%__USER__%%";
+    }
+
+    @CompileMethodsIntfer(user = "%%__USER__%%")
     public static void main(String[] args) {
         doMethods();
         doSounds();
@@ -30,16 +38,16 @@ public class CompileMethods {
     private static void doSounds() {
         List<String> list = new ArrayList<>();
 
-        for (DisguiseSoundEnums s : DisguiseSoundEnums.values()) {
-            StringBuilder sound = new StringBuilder(s.name());
+        for (DisguiseSoundEnums e : DisguiseSoundEnums.values()) {
+            StringBuilder sound = new StringBuilder(e.name());
 
-            for (DisguiseSound.SoundType type : DisguiseSound.SoundType.values()) {
-                sound.append(":");
+            for (SoundGroup.SoundType type : SoundGroup.SoundType.values()) {
+                sound.append("/");
 
                 int i = 0;
 
-                for (Map.Entry<Sound, DisguiseSound.SoundType> values : s.getDisguiseSounds().entrySet()) {
-                    if (values.getValue() != type) {
+                for (Map.Entry<String, SoundGroup.SoundType> entry : e.getSounds().entrySet()) {
+                    if (entry.getValue() != type) {
                         continue;
                     }
 
@@ -47,20 +55,25 @@ public class CompileMethods {
                         sound.append(",");
                     }
 
-                    sound.append(values.getKey().name());
+                    sound.append(entry.getKey());
                 }
             }
 
             list.add(sound.toString());
         }
 
-        File soundsFile = new File("target/classes/ANTI_PIRACY_ENCODED_WITH_SOUNDS");
+        File soundsFile = new File("target/classes/ANTI_PIRACY_SECRET_FILE");
 
-        try (PrintWriter writer = new PrintWriter(soundsFile, "UTF-8")) {
-            writer.write(StringUtils.join(list, "\n"));
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
+        try (FileOutputStream fos = new FileOutputStream(soundsFile)) {
+            byte[] array = StringUtils.join(list, "\n").getBytes(StandardCharsets.UTF_8);
+
+            for (int i = 0; i < array.length; i++) {
+                array[i] = (byte) (Byte.MAX_VALUE - array[i]);
+            }
+
+            fos.write(array);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -77,8 +90,8 @@ public class CompileMethods {
     }
 
     private static void doMethods() {
-        ArrayList<Class<?>> classes = ClassGetter
-                .getClassesForPackage(FlagWatcher.class, "me.libraryaddict.disguise.disguisetypes.watchers");
+        ArrayList<Class<?>> classes =
+                ClassGetter.getClassesForPackage(FlagWatcher.class, "me.libraryaddict.disguise.disguisetypes.watchers");
 
         ArrayList<Class> sorted = new ArrayList<>();
 
@@ -109,15 +122,15 @@ public class CompileMethods {
                 int removed = -1;
 
                 if (method.isAnnotationPresent(NmsAddedIn.class)) {
-                    added = method.getAnnotation(NmsAddedIn.class).val().ordinal();
+                    added = method.getAnnotation(NmsAddedIn.class).value().ordinal();
                 } else if (method.getDeclaringClass().isAnnotationPresent(NmsAddedIn.class)) {
-                    added = method.getDeclaringClass().getAnnotation(NmsAddedIn.class).val().ordinal();
+                    added = method.getDeclaringClass().getAnnotation(NmsAddedIn.class).value().ordinal();
                 }
 
                 if (method.isAnnotationPresent(NmsRemovedIn.class)) {
-                    removed = method.getAnnotation(NmsRemovedIn.class).val().ordinal();
+                    removed = method.getAnnotation(NmsRemovedIn.class).value().ordinal();
                 } else if (method.getDeclaringClass().isAnnotationPresent(NmsRemovedIn.class)) {
-                    removed = method.getDeclaringClass().getAnnotation(NmsRemovedIn.class).val().ordinal();
+                    removed = method.getDeclaringClass().getAnnotation(NmsRemovedIn.class).value().ordinal();
                 }
 
                 String param = method.getParameterCount() == 1 ? method.getParameterTypes()[0].getName() : "";
@@ -140,40 +153,55 @@ public class CompileMethods {
 
         File methodsFile = new File("target/classes/ANTI_PIRACY_ENCRYPTION");
 
-        try (PrintWriter writer = new PrintWriter(methodsFile, "UTF-8")) {
-            writer.write(StringUtils.join(methods, "\n"));
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
+        try (FileOutputStream fos = new FileOutputStream(methodsFile)) {
+            byte[] array = StringUtils.join(methods, "\n").getBytes(StandardCharsets.UTF_8);
+
+            for (int i = 0; i < array.length; i++) {
+                array[i] = (byte) (Byte.MAX_VALUE - array[i]);
+            }
+
+            fos.write(array);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     static String getDescriptorForClass(final Class c) {
         if (c.isPrimitive()) {
-            if (c == byte.class)
+            if (c == byte.class) {
                 return "B";
-            if (c == char.class)
+            }
+            if (c == char.class) {
                 return "C";
-            if (c == double.class)
+            }
+            if (c == double.class) {
                 return "D";
-            if (c == float.class)
+            }
+            if (c == float.class) {
                 return "F";
-            if (c == int.class)
+            }
+            if (c == int.class) {
                 return "I";
-            if (c == long.class)
+            }
+            if (c == long.class) {
                 return "J";
-            if (c == short.class)
+            }
+            if (c == short.class) {
                 return "S";
-            if (c == boolean.class)
+            }
+            if (c == boolean.class) {
                 return "Z";
-            if (c == void.class)
+            }
+            if (c == void.class) {
                 return "V";
+            }
 
             throw new RuntimeException("Unrecognized primitive " + c);
         }
 
-        if (c.isArray())
+        if (c.isArray()) {
             return c.getName().replace('.', '/');
+        }
 
         return ('L' + c.getName() + ';').replace('.', '/');
     }

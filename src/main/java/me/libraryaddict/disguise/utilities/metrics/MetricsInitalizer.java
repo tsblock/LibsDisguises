@@ -1,5 +1,6 @@
 package me.libraryaddict.disguise.utilities.metrics;
 
+import me.libraryaddict.disguise.DisguiseAPI;
 import me.libraryaddict.disguise.DisguiseConfig;
 import me.libraryaddict.disguise.LibsDisguises;
 import me.libraryaddict.disguise.disguisetypes.Disguise;
@@ -78,6 +79,20 @@ public class MetricsInitalizer {
             @Override
             public String getValue() {
                 return "" + DisguiseUtilities.isGrabSkinCommandUsed();
+            }
+        });
+
+        metrics.addCustomChart(new Metrics.SimplePie("grabhead_command") {
+            @Override
+            public String getValue() {
+                return "" + DisguiseUtilities.isGrabHeadCommandUsed();
+            }
+        });
+
+        metrics.addCustomChart(new Metrics.SimplePie("default_libraryaddict") {
+            @Override
+            public String getValue() {
+                return (DisguiseAPI.getRawCustomDisguise("libraryaddict") != null) + "";
             }
         });
 
